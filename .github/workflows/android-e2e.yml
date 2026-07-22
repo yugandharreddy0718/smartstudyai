@@ -63,12 +63,14 @@ jobs:
       # Step 6: Build Android APK
       - name: Build Android Debug APK
         run: |
+          mkdir -p public
+          echo "=== GRADLE APK BUILD ===" > public/gradle-error.txt
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug >> ../public/gradle-error.txt 2>&1 || (cat ../public/gradle-error.txt && exit 1)
           cd ..
+          rm -f public/gradle-error.txt
           mkdir -p android/app/build/outputs/apk/debug/
-          # Ensure file is available at predicted E2E path
           echo "APK Build complete."
 
       # Step 7 & 8: Start Android Emulator and Verify Readiness
