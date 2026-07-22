@@ -6,9 +6,11 @@
   "main": "runners/seleniumTestRunner.js",
   "scripts": {
     "test": "node runners/testRunner.js",
-    "test-selenium": "node runners/seleniumTestRunner.js"
+    "test-selenium": "node runners/seleniumTestRunner.js",
+    "test-load": "node load-test/run-load-test.js"
   },
   "dependencies": {
+    "autocannon": "^7.15.0",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "selenium-webdriver": "^4.22.0",

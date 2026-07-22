@@ -1,0 +1,83 @@
+name: Baseline Load Testing & Performance Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup Node.js v20
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Step 3: Install root dependencies
+      - name: Install Project Dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
+
+      # Step 4: Build static React front-end and esbuild server
+      - name: Build Application
+        run: |
+          npx vite build
+          npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+
+      # Step 5: Boot backend server in background
+      - name: Start Server in Background
+        run: |
+          node dist/server.cjs &
+          echo "Waiting for backend server to spin up on port 3000..."
+          sleep 10 # Allow enough time for express static server to initialize
+
+      # Step 6: Install load dependencies and run autocannon test
+      - name: Run Autocannon Load Test
+        run: |
+          cd automation
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
+          npm run test-load
+          cd ..
+
+      # Step 7: Upload generated markdown report as workflow artifact
+      - name: Upload Load Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SmartStudy-Load-Test-Report
+          path: |
+            Test Results/LoadTest/
+          retention-days: 30
+
+      # Step 8: Append load test markdown metrics straight to the Job Summary dashboard
+      - name: Publish Load Test Job Summary
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            try {
+              const summaryPath = path.resolve('Test Results/LoadTest/load-test-summary.md');
+              if (fs.existsSync(summaryPath)) {
+                const summaryContent = fs.readFileSync(summaryPath, 'utf8');
+                core.summary.addRaw(summaryContent).write();
+              }
+            } catch (e) {
+              console.log('Failed to append load test summary: ' + e.message);
+            }
