@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Connection verification
+    match /test/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+               data.uid == request.auth.uid &&
+               data.email is string && data.email.size() <= 256;
+      }
+      
+      allow get: if isOwner(userId);
+      allow list: if false; // Profiles are private for now
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'studentClass', 'stats', 'completedLessons', 'lastLogin', 'xp', 'streak', 'level', 'badges'
+        ])
+      );
+    }
+
+    // 2. Subjects & Chapters (Publicly readable by signed in users)
+    match /subjects/{subjectId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only admin via console/separate tool
+      
+      match /chapters/{chapterId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    // 3. Lessons
+    match /lessons/{lessonId} {
+      function isValidLesson(data) {
+        return data.keys().hasAll(['id', 'title', 'type', 'ownerId', 'createdAt']) &&
+               data.ownerId == request.auth.uid &&
+               data.title is string && data.title.size() <= 256;
+      }
+
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.ownerId == 'admin');
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || resource.data.ownerId == 'admin');
+      allow create: if isSignedIn() && isValidLesson(request.resource.data);
+      allow update: if isOwner(resource.data.ownerId) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aiAnalysis', 'content'])
+      );
+      allow delete: if isOwner(resource.data.ownerId);
+    }
+
+    // 4. Quizzes
+    match /quizzes/{quizId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // Users can generate quizzes
+      allow delete: if false;
+    }
+
+    // 5. Results
+    match /results/{resultId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // 6. Chats
+    match /chats/{chatId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId);
+    }
+  }
+}

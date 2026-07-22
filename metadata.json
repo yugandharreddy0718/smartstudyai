@@ -1,0 +1,15 @@
+{
+  "name": "SmartStudy AI",
+  "description": "An AI-powered personalized learning platform for students, featuring AI lesson analysis, quiz generation, automated summaries, and an interactive study chatbot.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "AI-powered Lesson Analysis",
+    "Automated Quiz Generation",
+    "AI Study Chatbot",
+    "Student Progress Tracking"
+  ]
+}
