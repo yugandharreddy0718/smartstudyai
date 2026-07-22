@@ -33,7 +33,7 @@ jobs:
       # Step 3: Install dependencies and build React web app with subfolder routing base
       - name: Install dependencies & build React Web App
         run: |
-          npm install
+          npm install --legacy-peer-deps
           # Run vite build and esbuild server separately to avoid passing base argument to esbuild
           npx vite build --base=/${{ github.event.repository.name }}/
           npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
@@ -84,7 +84,7 @@ jobs:
           BASE_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
         run: |
           cd automation
-          npm install
+          npm install --legacy-peer-deps
           npm run test-selenium
           cd ..
 
