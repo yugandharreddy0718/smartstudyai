@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const reportsDir = path.resolve(__dirname, '../../Test Results');
+const reportsDir = path.resolve(__dirname, '../../Test Results/Web');
 const htmlDir = path.join(reportsDir, 'HTML');
 
 if (!fs.existsSync(htmlDir)) {

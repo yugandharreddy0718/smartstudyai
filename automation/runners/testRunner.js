@@ -18,7 +18,7 @@ import ChatPage from '../pages/ChatPage.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const reportsDir = path.resolve(__dirname, '../../Test Results');
+const reportsDir = path.resolve(__dirname, '../../Test Results/Mobile');
 const screenshotDir = path.join(reportsDir, 'Screenshots');
 const logDir = path.join(reportsDir, 'Logs');
 const jsonDir = path.join(reportsDir, 'JSON');

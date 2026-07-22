@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure output directories exist
-const reportsDir = path.resolve(__dirname, '../../Test Results');
+const reportsDir = path.resolve(__dirname, '../../Test Results/Mobile');
 const excelDir = path.join(reportsDir, 'Excel');
 
 if (!fs.existsSync(excelDir)) {

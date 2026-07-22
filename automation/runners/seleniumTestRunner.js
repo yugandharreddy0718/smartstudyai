@@ -18,7 +18,7 @@ import WebChatPage from '../pages/WebChatPage.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const reportsDir = path.resolve(__dirname, '../../Test Results');
+const reportsDir = path.resolve(__dirname, '../../Test Results/Web');
 const scDir = path.join(reportsDir, 'Screenshots');
 const logDir = path.join(reportsDir, 'Logs');
 const jsonDir = path.join(reportsDir, 'JSON');
