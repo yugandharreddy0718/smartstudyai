@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Shell } from './components/layout/Shell';
 import Login from './components/Login';
@@ -38,7 +38,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -50,7 +50,7 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   );
 }
