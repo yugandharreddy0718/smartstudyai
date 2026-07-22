@@ -58,6 +58,18 @@ jobs:
           if [ ! -d "android" ]; then
             npx cap add android
           fi
+          
+          # Align Kotlin Standard Libraries to prevent checkDebugDuplicateClasses duplicate class error
+          echo "subprojects {" >> android/build.gradle
+          echo "    configurations.all {" >> android/build.gradle
+          echo "        resolutionStrategy {" >> android/build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'" >> android/build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'" >> android/build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> android/build.gradle
+          echo "        }" >> android/build.gradle
+          echo "    }" >> android/build.gradle
+          echo "}" >> android/build.gradle
+          
           npx cap sync
 
       # Step 6: Build Android APK
