@@ -6,7 +6,7 @@ npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
 npm warn EBADENGINE }
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
-added 537 packages, and audited 538 packages in 20s
+added 537 packages, and audited 538 packages in 24s
 
 120 packages are looking for funding
   run `npm fund` for details
