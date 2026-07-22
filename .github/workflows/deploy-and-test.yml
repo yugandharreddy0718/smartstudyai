@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       # Step 3: Install dependencies and build React web app with subfolder routing base
@@ -35,6 +35,7 @@ jobs:
         run: |
           mkdir -p public
           echo "=== DEPENDENCY INSTALLATION ===" > public/build-error.txt
+          rm -f package-lock.json
           npm install --legacy-peer-deps >> public/build-error.txt 2>&1 || (cat public/build-error.txt && exit 1)
           
           echo "=== VITE PRODUCTION BUILD ===" >> public/build-error.txt
