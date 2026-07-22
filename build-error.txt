@@ -1,7 +1,7 @@
 === DEPENDENCY INSTALLATION ===
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
-added 464 packages, and audited 465 packages in 18s
+added 464 packages, and audited 465 packages in 20s
 
 113 packages are looking for funding
   run `npm fund` for details
