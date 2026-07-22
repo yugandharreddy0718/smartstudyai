@@ -34,8 +34,9 @@ jobs:
       - name: Install dependencies & build React Web App
         run: |
           npm install
-          # Set base path matching the repository name for correct GitHub Pages routing
-          npm run build -- --base=/${{ github.event.repository.name }}/
+          # Run vite build and esbuild server separately to avoid passing base argument to esbuild
+          npx vite build --base=/${{ github.event.repository.name }}/
+          npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
 
       # Step 4: Deploy Built App to GitHub Pages branch
       - name: Deploy Web App to GitHub Pages
