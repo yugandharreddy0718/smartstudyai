@@ -33,10 +33,18 @@ jobs:
       # Step 3: Install dependencies and build React web app with subfolder routing base
       - name: Install dependencies & build React Web App
         run: |
-          npm install --legacy-peer-deps
-          # Run vite build and esbuild server separately to avoid passing base argument to esbuild
-          npx vite build --base=/${{ github.event.repository.name }}/
-          npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+          mkdir -p public
+          echo "=== DEPENDENCY INSTALLATION ===" > public/build-error.txt
+          npm install --legacy-peer-deps >> public/build-error.txt 2>&1 || (cat public/build-error.txt && exit 1)
+          
+          echo "=== VITE PRODUCTION BUILD ===" >> public/build-error.txt
+          npx vite build --base=/${{ github.event.repository.name }}/ >> public/build-error.txt 2>&1 || (cat public/build-error.txt && exit 1)
+          
+          echo "=== ESBUILD SERVER COMPILATION ===" >> public/build-error.txt
+          npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs >> public/build-error.txt 2>&1 || (cat public/build-error.txt && exit 1)
+          
+          # Remove diagnostic file on success so it doesn't deploy to production
+          rm -f public/build-error.txt
 
       # Step 4: Deploy Built App to GitHub Pages branch
       - name: Deploy Web App to GitHub Pages
