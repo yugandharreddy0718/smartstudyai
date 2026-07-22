@@ -1,9 +1,14 @@
 === DEPENDENCY INSTALLATION ===
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@capacitor/cli@8.4.2',
+npm warn EBADENGINE   required: { node: '>=22.0.0' },
+npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+npm warn EBADENGINE }
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
-added 464 packages, and audited 465 packages in 20s
+added 537 packages, and audited 538 packages in 27s
 
-113 packages are looking for funding
+120 packages are looking for funding
   run `npm fund` for details
 
 found 0 vulnerabilities
