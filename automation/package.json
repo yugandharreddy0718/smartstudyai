@@ -1,0 +1,17 @@
+{
+  "name": "smartstudy-automation-suite",
+  "version": "1.0.0",
+  "description": "Enterprise-Grade Mobile (Appium) & Web (Selenium) Automation Suite",
+  "type": "module",
+  "main": "runners/seleniumTestRunner.js",
+  "scripts": {
+    "test": "node runners/testRunner.js",
+    "test-selenium": "node runners/seleniumTestRunner.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "selenium-webdriver": "^4.22.0",
+    "webdriverio": "^8.40.6"
+  }
+}

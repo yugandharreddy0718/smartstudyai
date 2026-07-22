@@ -1,0 +1,170 @@
+name: SmartStudy AI Android E2E Appium Automation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Run nightly at midnight
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest # Required for hardware-accelerated Android Emulator
+    
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Setup Java
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # Step 3: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # Step 4: Install Dependencies & Initialize Capacitor
+      - name: Install Project Dependencies
+        run: |
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      # Step 5: Build Web Application & Capacitor Assets
+      - name: Build Web Application
+        run: |
+          npm run build
+          # Initialize capacitor configuration if missing
+          if [ ! -f "capacitor.config.json" ]; then
+            npx cap init SmartStudyAI com.smartstudy.app --web-dir=dist
+          fi
+          # Check and add Android platform
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync
+
+      # Step 6: Build Android APK
+      - name: Build Android Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cd ..
+          mkdir -p android/app/build/outputs/apk/debug/
+          # Ensure file is available at predicted E2E path
+          echo "APK Build complete."
+
+      # Step 7 & 8: Start Android Emulator and Verify Readiness
+      # Setup Emulator, Appium, and run tests inside macos emulator context
+      - name: Run E2E Tests on Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            # Check emulator connection
+            adb wait-for-device
+            echo "Android Emulator is ready."
+            
+            # Install built APK
+            adb install android/app/build/outputs/apk/debug/app-debug.apk || echo "APK already installed or not found."
+            
+            # Install Appium and driver globally in emulator shell context
+            npm install -g appium
+            appium driver install uiautomator2
+            
+            # Start Appium server in background
+            appium --log logs/appium-server.log &
+            
+            # Verify Appium readiness
+            echo "Waiting for Appium to boot..."
+            sleep 10
+            
+            # Install test suite dependencies and run
+            cd automation
+            npm install
+            npm test
+            cd ..
+
+      # Step 9: Post-Execution Diagnostic log dumping (on failure/success)
+      - name: Dump Logcat Logs
+        if: always()
+        run: |
+          adb logcat -d > "Test Results/Logs/logcat_dump.log" || echo "Logcat dumping unavailable."
+
+      # Step 10: Compile Report Folder for GitHub Pages
+      - name: Prepare GitHub Pages Assets
+        if: always()
+        run: |
+          mkdir -p public/reports/latest
+          mkdir -p public/reports/history/build-${{ github.run_number }}
+          
+          # Copy outputs
+          cp "Test Results/HTML/execution-report.html" public/reports/latest/ || echo "Report not found"
+          cp "Test Results/HTML/dashboard.html" public/reports/latest/ || echo "Dashboard not found"
+          cp "Test Results/Summary/summary.md" public/reports/latest/ || echo "Summary not found"
+          cp -r "Test Results/Screenshots" public/reports/latest/ || true
+          cp -r "Test Results/Logs" public/reports/latest/ || true
+          
+          # Populate build folder (history)
+          cp -r public/reports/latest/* public/reports/history/build-${{ github.run_number }}/ || true
+          
+          echo "GitHub Pages deployment assets compiled successfully."
+
+      # Step 11: Upload Build Artifacts (30 days retention)
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SmartStudy-QA-Artifacts-Build-${{ github.run_number }}
+          path: |
+            Test Results/
+          retention-days: 30
+
+      # Step 12: Deploy Reports to GitHub Pages (preserves history)
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: always()
+        with:
+          folder: public
+          branch: gh-pages
+          clean: false # Critical to maintain history directories (build-001, build-002, etc.)
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 13: Publish Job Summary in Markdown
+      - name: Publish GitHub Action Summary
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            try {
+              const summaryPath = path.resolve('Test Results/Summary/summary.md');
+              if (fs.existsSync(summaryPath)) {
+                const summaryContent = fs.readFileSync(summaryPath, 'utf8');
+                core.summary.addRaw(summaryContent).write();
+              }
+            } catch (e) {
+              console.log('Failed to append job summary: ' + e.message);
+            }

@@ -1,0 +1,148 @@
+name: Live Web Deploy & Selenium E2E Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  deploy-and-test:
+    runs-on: ubuntu-latest # Fast linux environment with pre-installed Chrome/Chromedriver
+    
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # Step 3: Install dependencies and build React web app with subfolder routing base
+      - name: Install dependencies & build React Web App
+        run: |
+          npm install
+          # Set base path matching the repository name for correct GitHub Pages routing
+          npm run build -- --base=/${{ github.event.repository.name }}/
+
+      # Step 4: Deploy Built App to GitHub Pages branch
+      - name: Deploy Web App to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist
+          branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
+          clean: true # Clear old web app files to ensure fresh deploy
+
+      # Step 5: Wait for GitHub Pages to go online and return HTTP 200
+      - name: Verify Live Deployment Readiness
+        run: |
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          echo "Target Live URL: $URL"
+          echo "Polling URL for HTTP 200 status..."
+          
+          # Retry loop up to 20 times (5 minutes max)
+          SUCCESS=false
+          for i in {1..20}; do
+            CODE=$(curl -o /dev/null -s -w "%{http_code}" "$URL" || true)
+            if [ "$CODE" -eq 200 ] || [ "$CODE" -eq 301 ]; then
+              echo "Deployment is online! HTTP Status: $CODE"
+              SUCCESS=true
+              break
+            fi
+            echo "Waiting for Pages deploy... Attempt $i: Received HTTP $CODE"
+            sleep 15
+          done
+          
+          if [ "$SUCCESS" = false ]; then
+            echo "Deployment verification timed out."
+            exit 1
+          fi
+
+      # Step 6: Setup Headless Chrome Driver for testing
+      - name: Setup Chrome Browser
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      # Step 7: Run Selenium E2E Tests against live deployment URL
+      - name: Run Selenium E2E Test Suite
+        env:
+          BASE_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        run: |
+          cd automation
+          npm install
+          npm run test-selenium
+          cd ..
+
+      # Step 8: Compile Reports for Publishing
+      - name: Compile Reports for GitHub Pages hosting
+        if: always()
+        run: |
+          mkdir -p public/reports/latest
+          mkdir -p public/reports/history/build-${{ github.run_number }}
+          
+          # Copy Excel and HTML dashboards
+          cp "Test Results/HTML/execution-report.html" public/reports/latest/ || echo "HTML Report missing"
+          cp "Test Results/HTML/dashboard.html" public/reports/latest/ || echo "Dashboard missing"
+          cp "Test Results/Summary/summary.md" public/reports/latest/ || echo "Summary missing"
+          cp -r "Test Results/Screenshots" public/reports/latest/ || true
+          cp -r "Test Results/Logs" public/reports/latest/ || true
+          
+          # Copy to build archive
+          cp -r public/reports/latest/* public/reports/history/build-${{ github.run_number }}/ || true
+          
+          # Put a redirection index in the public folder if it is empty so it doesn't crash root Page loads
+          if [ ! -f "public/index.html" ]; then
+            echo "<html><head><meta http-equiv='refresh' content='0; URL=./reports/latest/execution-report.html'></head></html>" > public/index.html
+          fi
+
+      # Step 9: Upload Test Artifacts (30 days retention)
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SmartStudy-Web-QA-Artifacts-Build-${{ github.run_number }}
+          path: |
+            Test Results/
+          retention-days: 30
+
+      # Step 10: Deploy Reports to gh-pages branch (maintains history)
+      - name: Publish Test Reports to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: always()
+        with:
+          folder: public
+          branch: gh-pages
+          clean: false # Critical to maintain history directories (build-001, build-002, etc.)
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 11: Publish Job Summary in Markdown
+      - name: Publish GitHub Action Summary
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            try {
+              const summaryPath = path.resolve('Test Results/Summary/summary.md');
+              if (fs.existsSync(summaryPath)) {
+                const summaryContent = fs.readFileSync(summaryPath, 'utf8');
+                core.summary.addRaw(summaryContent).write();
+              }
+            } catch (e) {
+              console.log('Failed to append job summary: ' + e.message);
+            }
