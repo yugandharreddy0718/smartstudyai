@@ -461,12 +461,24 @@ async function generateExcelReport(results, totalDuration, isSimulated) {
     currentRow++;
   });
   
-  // Write spreadsheet to file
+  // Write spreadsheet to file in appium-tests folder
   const reportPath = path.resolve(__dirname, 'appium-test-report.xlsx');
   await workbook.xlsx.writeFile(reportPath);
   
+  // Also save to centralized Test Results folders
+  const testResultsMobileDir = path.resolve(__dirname, '../Test Results/Mobile');
+  fs.mkdirSync(testResultsMobileDir, { recursive: true });
+  await workbook.xlsx.writeFile(path.join(testResultsMobileDir, 'appium-test-report.xlsx'));
+
+  const testResultsExcelDir = path.resolve(__dirname, '../Test Results/Excel');
+  fs.mkdirSync(testResultsExcelDir, { recursive: true });
+  await workbook.xlsx.writeFile(path.join(testResultsExcelDir, 'appium-test-report.xlsx'));
+
   console.log(`\n===================================================`);
-  console.log(`Excel analysis report saved to:\n  ${reportPath}`);
+  console.log(`Excel analysis report saved to:`);
+  console.log(`  1. ${reportPath}`);
+  console.log(`  2. ${path.join(testResultsMobileDir, 'appium-test-report.xlsx')}`);
+  console.log(`  3. ${path.join(testResultsExcelDir, 'appium-test-report.xlsx')}`);
   console.log(`===================================================`);
 }
 

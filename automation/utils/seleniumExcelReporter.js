@@ -59,7 +59,17 @@ export async function generateSeleniumExcelReports(testCases, totalDuration) {
   const summaryPath = path.join(excelDir, 'Summary_Report.xlsx');
   await summaryWb.xlsx.writeFile(summaryPath);
 
-  console.log(`Excel reports generated successfully in:\n  ${excelDir}`);
+  // Sync to root Test Results/Excel directory
+  const rootExcelDir = path.resolve(__dirname, '../../Test Results/Excel');
+  if (!fs.existsSync(rootExcelDir)) {
+    fs.mkdirSync(rootExcelDir, { recursive: true });
+  }
+  await masterWb.xlsx.writeFile(path.join(rootExcelDir, 'Automation_Test_Report.xlsx'));
+  await passedWb.xlsx.writeFile(path.join(rootExcelDir, 'Passed_Test_Cases.xlsx'));
+  await failedWb.xlsx.writeFile(path.join(rootExcelDir, 'Failed_Test_Cases.xlsx'));
+  await summaryWb.xlsx.writeFile(path.join(rootExcelDir, 'Summary_Report.xlsx'));
+
+  console.log(`Excel reports generated successfully in:\n  1. ${excelDir}\n  2. ${rootExcelDir}`);
 }
 
 async function addWebTestSheet(wb, name, cases) {

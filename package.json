@@ -15,6 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:selenium": "cd automation && npm run test-selenium",
+    "test:appium": "cd appium-tests && npm test",
     "lint": "tsc --noEmit",
     "lint:eslint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"*.{ts,json,md}\"",

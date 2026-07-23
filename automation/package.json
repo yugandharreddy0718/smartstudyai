@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node runners/testRunner.js",
     "test-selenium": "node runners/seleniumTestRunner.js",
-    "test-load": "node load-test/run-load-test.js"
+    "test-load": "node load-test/run-load-test.js",
+    "test-appium": "cd ../appium-tests && npm test"
   },
   "dependencies": {
     "autocannon": "^7.15.0",
