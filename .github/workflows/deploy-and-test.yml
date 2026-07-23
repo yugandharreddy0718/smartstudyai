@@ -82,7 +82,7 @@ jobs:
 
       # Step 6: Setup Headless Chrome Driver for testing
       - name: Setup Chrome Browser
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
 
