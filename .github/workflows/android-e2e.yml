@@ -42,7 +42,6 @@ jobs:
       # Step 4: Install Dependencies & Initialize Capacitor
       - name: Install Project Dependencies
         run: |
-          rm -f package-lock.json
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
 

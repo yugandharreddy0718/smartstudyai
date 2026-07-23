@@ -31,7 +31,6 @@ jobs:
         run: |
           if [ -f "package.json" ]; then
             echo "Node.js / Express backend detected!"
-            rm -f package-lock.json
             npm install --legacy-peer-deps
           else
             echo "Error: package.json missing. Unsupported technology stack."

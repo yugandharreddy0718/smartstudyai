@@ -215,7 +215,7 @@ export default function ChapterList() {
   );
 }
 
-function ChapterCard({ chapter, isLocked, index }: { chapter: any, isLocked: boolean, index: number }) {
+function ChapterCard({ chapter, isLocked, index }: { chapter: any, isLocked: boolean, index: number, key?: any }) {
   return (
     <Link 
       to={isLocked ? '#' : `/lessons/${chapter.id}`}

@@ -1052,7 +1052,7 @@ function ActionButton({ icon: Icon, label, onClick, loading, color }: { icon: an
   );
 }
 
-function Flashcard({ front, back }: { front: string, back: string }) {
+function Flashcard({ front, back }: { front: string, back: string, key?: any }) {
   const [flipped, setFlipped] = useState(false);
   return (
     <div 

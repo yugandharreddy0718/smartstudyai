@@ -23,5 +23,15 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "automation",
+    "appium-tests",
+    "vitest.config.ts",
+    "src/setupTests.ts",
+    "src/__tests__"
+  ]
 }

@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+Test Results
+Vulnerability Test Results
+automation
+appium-tests
+package-lock.json

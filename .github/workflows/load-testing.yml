@@ -29,7 +29,6 @@ jobs:
       # Step 3: Install root dependencies
       - name: Install Project Dependencies
         run: |
-          rm -f package-lock.json
           npm install --legacy-peer-deps
 
       # Step 4: Build static React front-end and esbuild server

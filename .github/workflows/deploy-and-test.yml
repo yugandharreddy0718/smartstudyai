@@ -1,4 +1,4 @@
-name: Live Web Deploy & Selenium E2E Verification
+name: Deploy and Live E2E Tests
 
 on:
   push:
@@ -35,7 +35,6 @@ jobs:
         run: |
           mkdir -p public
           echo "=== DEPENDENCY INSTALLATION ===" > public/build-error.txt
-          rm -f package-lock.json
           npm install --legacy-peer-deps >> public/build-error.txt 2>&1 || (cat public/build-error.txt && exit 1)
           
           echo "=== VITE PRODUCTION BUILD ===" >> public/build-error.txt
