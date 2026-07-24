@@ -9,8 +9,42 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
-// In-memory OTP store for email authentication
-const otpStore: Record<string, { code: string; expiresAt: number }> = {};
+// Persistent OTP Storage helpers
+const memoryOTPStore: Record<string, { code: string; expiresAt: number }> = {};
+
+function saveOTPToStorage(email: string, code: string) {
+  const cleanEmail = email.trim().toLowerCase();
+  const data = { code, expiresAt: Date.now() + 10 * 60 * 1000 }; // 10 minutes
+  memoryOTPStore[cleanEmail] = data;
+  try {
+    sessionStorage.setItem(`smartstudy_otp_${cleanEmail}`, JSON.stringify(data));
+    localStorage.setItem(`smartstudy_otp_${cleanEmail}`, JSON.stringify(data));
+  } catch (e) {}
+}
+
+function getOTPFromStorage(email: string): { code: string; expiresAt: number } | null {
+  const cleanEmail = email.trim().toLowerCase();
+  if (memoryOTPStore[cleanEmail]) return memoryOTPStore[cleanEmail];
+  
+  try {
+    const sessionData = sessionStorage.getItem(`smartstudy_otp_${cleanEmail}`);
+    if (sessionData) return JSON.parse(sessionData);
+
+    const localData = localStorage.getItem(`smartstudy_otp_${cleanEmail}`);
+    if (localData) return JSON.parse(localData);
+  } catch (e) {}
+
+  return null;
+}
+
+function clearOTPFromStorage(email: string) {
+  const cleanEmail = email.trim().toLowerCase();
+  delete memoryOTPStore[cleanEmail];
+  try {
+    sessionStorage.removeItem(`smartstudy_otp_${cleanEmail}`);
+    localStorage.removeItem(`smartstudy_otp_${cleanEmail}`);
+  } catch (e) {}
+}
 
 export async function sendEmailOTP(email: string): Promise<{ success: boolean; code: string; message: string }> {
   const cleanEmail = email.trim().toLowerCase();
@@ -20,10 +54,7 @@ export async function sendEmailOTP(email: string): Promise<{ success: boolean; c
 
   // Generate a 6-digit OTP code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  otpStore[cleanEmail] = {
-    code,
-    expiresAt: Date.now() + 5 * 60 * 1000 // Valid for 5 minutes
-  };
+  saveOTPToStorage(cleanEmail, code);
 
   console.log(`[SmartStudy Auth] OTP generated for ${cleanEmail}: ${code}`);
 
@@ -36,14 +67,14 @@ export async function sendEmailOTP(email: string): Promise<{ success: boolean; c
 
 export async function verifyEmailOTP(email: string, inputCode: string) {
   const cleanEmail = email.trim().toLowerCase();
-  const stored = otpStore[cleanEmail];
+  const stored = getOTPFromStorage(cleanEmail);
 
   if (!stored) {
     throw new Error('No active OTP request found. Please click "Send OTP" first.');
   }
 
   if (Date.now() > stored.expiresAt) {
-    delete otpStore[cleanEmail];
+    clearOTPFromStorage(cleanEmail);
     throw new Error('OTP verification code has expired. Please request a new OTP.');
   }
 
@@ -52,7 +83,7 @@ export async function verifyEmailOTP(email: string, inputCode: string) {
   }
 
   // Clear consumed OTP
-  delete otpStore[cleanEmail];
+  clearOTPFromStorage(cleanEmail);
 
   // Authenticate user via Firebase
   let user = auth.currentUser;
