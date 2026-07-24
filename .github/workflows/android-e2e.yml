@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: macos-latest # Required for hardware-accelerated Android Emulator
+    runs-on: ubuntu-latest # Supported environment for reactivecircus/android-emulator-runner with hardware KVM acceleration
     
     steps:
       # Step 1: Checkout Repository
@@ -42,6 +42,7 @@ jobs:
       # Step 4: Install Dependencies & Initialize Capacitor
       - name: Install Project Dependencies
         run: |
+          mkdir -p "Test Results/Mobile" "Test Results/Logs" "Test Results/HTML" "Test Results/Summary" "Test Results/Screenshots"
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
 
@@ -57,17 +58,6 @@ jobs:
           if [ ! -d "android" ]; then
             npx cap add android
           fi
-          
-          # Align Kotlin Standard Libraries to prevent checkDebugDuplicateClasses duplicate class error
-          echo "subprojects {" >> android/build.gradle
-          echo "    configurations.all {" >> android/build.gradle
-          echo "        resolutionStrategy {" >> android/build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'" >> android/build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'" >> android/build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> android/build.gradle
-          echo "        }" >> android/build.gradle
-          echo "    }" >> android/build.gradle
-          echo "}" >> android/build.gradle
           
           npx cap sync
 
@@ -85,11 +75,11 @@ jobs:
           echo "APK Build complete."
 
       # Step 7 & 8: Start Android Emulator and Verify Readiness
-      # Setup Emulator, Appium, and run tests inside macos emulator context
+      # Setup Emulator, Appium, and run tests inside linux emulator context
       - name: Run E2E Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 30
           target: google_apis
           arch: x86_64
           force-avd-creation: false
@@ -108,6 +98,7 @@ jobs:
             appium driver install uiautomator2
             
             # Start Appium server in background
+            mkdir -p logs
             appium --log logs/appium-server.log &
             
             # Verify Appium readiness
@@ -124,6 +115,7 @@ jobs:
       - name: Dump Logcat Logs
         if: always()
         run: |
+          mkdir -p "Test Results/Logs"
           adb logcat -d > "Test Results/Logs/logcat_dump.log" || echo "Logcat dumping unavailable."
 
       # Step 10: Compile Report Folder for GitHub Pages
@@ -142,6 +134,10 @@ jobs:
           
           # Populate build folder (history)
           cp -r public/reports/latest/* public/reports/history/build-${{ github.run_number }}/ || true
+
+          if [ ! -f "public/index.html" ]; then
+            echo "<html><head><meta http-equiv='refresh' content='0; URL=./reports/latest/execution-report.html'></head></html>" > public/index.html
+          fi
           
           echo "GitHub Pages deployment assets compiled successfully."
 
