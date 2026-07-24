@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowRight, BookOpen, BrainCircuit, BarChart3, AlertCircle } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle, signInAsGuest } from '../lib/firebase';
 import { cn } from '../lib/utils';
 
 export default function Login() {
@@ -16,6 +16,19 @@ export default function Login() {
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to sign in. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setSigningIn(true);
+    setError(null);
+    try {
+      await signInAsGuest();
+    } catch (e: any) {
+      console.error(e);
+      setError("Guest sign-in failed. Please try again.");
     } finally {
       setSigningIn(false);
     }
@@ -40,25 +53,36 @@ export default function Login() {
           <p className="text-slate-500 font-medium">Your personal AI-powered study companion.</p>
         </div>
 
-        <div className="space-y-4 mb-10">
+        <div className="space-y-4 mb-8">
           <FeatureItem icon={BrainCircuit} text="AI-powered lesson analysis" color="bg-indigo-50 text-indigo-600" />
           <FeatureItem icon={BookOpen} text="Personalized study notes" color="bg-rose-50 text-rose-600" />
           <FeatureItem icon={BarChart3} text="Real-time progress tracking" color="bg-emerald-50 text-emerald-600" />
         </div>
 
-        <button 
-          onClick={handleLogin}
-          disabled={signingIn}
-          className="w-full bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-[0.98] shadow-lg shadow-slate-900/20 disabled:opacity-50"
-        >
-          {signingIn ? (
-             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-          )}
-          {signingIn ? 'Signing in...' : 'Continue with Google'}
-          <ArrowRight className="w-5 h-5 ml-auto opacity-50" />
-        </button>
+        <div className="space-y-3">
+          <button 
+            onClick={handleLogin}
+            disabled={signingIn}
+            className="w-full bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-[0.98] shadow-lg shadow-slate-900/20 disabled:opacity-50"
+          >
+            {signingIn ? (
+               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+            )}
+            {signingIn ? 'Signing in...' : 'Continue with Google'}
+            <ArrowRight className="w-5 h-5 ml-auto opacity-50" />
+          </button>
+
+          <button 
+            onClick={handleGuestLogin}
+            disabled={signingIn}
+            className="w-full bg-slate-100 text-slate-700 py-3.5 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-slate-200 transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Explore as Guest / Quick Start</span>
+          </button>
+        </div>
 
         {error && (
           <div className="mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm animate-shake">

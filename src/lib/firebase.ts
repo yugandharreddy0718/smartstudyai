@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 // @ts-ignore
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -13,8 +13,24 @@ export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
+  } catch (error: any) {
+    console.warn('Google Popup sign-in unavailable or restricted in WebView, falling back to Guest session...', error);
+    try {
+      const anonResult = await signInAnonymously(auth);
+      return anonResult.user;
+    } catch (fallbackErr) {
+      console.error('Anonymous auth fallback failed:', fallbackErr);
+      throw error;
+    }
+  }
+}
+
+export async function signInAsGuest() {
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
   } catch (error) {
-    console.error('Error signing in with Google', error);
+    console.error('Error signing in as guest:', error);
     throw error;
   }
 }
