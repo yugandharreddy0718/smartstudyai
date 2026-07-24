@@ -85,7 +85,7 @@ jobs:
 
       # Step 10: Upload Audit Deliverables as Artifacts
       - name: Upload Security Audit Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: SmartStudy-Security-Review-Audit
