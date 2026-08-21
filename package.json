@@ -14,7 +14,10 @@
     "dev:web": "npm run dev --workspace=web",
     "build:web": "npm run build --workspace=web",
     "build:backend": "npm run build --workspace=backend",
-    "test": "npm test --workspaces"
+    "typecheck": "npm run typecheck --workspace=web",
+    "build": "npm run build:web && npm run build:backend",
+    "test": "npm test --workspace=web",
+    "test:coverage": "npm test --workspace=web"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
