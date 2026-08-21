@@ -11,6 +11,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  actions: read
 
 jobs:
   deploy-reports-to-pages:
@@ -21,49 +22,115 @@ jobs:
       - name: Stage 1 - Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Stage 2 - Download Mobile Report Artifact
-        uses: actions/download-artifact@v4
-        continue-on-error: true
+      - name: Stage 2 & 3 - Download E2E Report Artifacts from Upstream Run & Repository
+        uses: actions/github-script@v7
         with:
-          name: smartstudy-mobile-reports
-          path: Test Results/Mobile
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { execSync } = require('child_process');
 
-      - name: Stage 3 - Download Web Report Artifact
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: smartstudy-web-reports
-          path: Test Results/Web
+            fs.mkdirSync('Test Results/Mobile', { recursive: true });
+            fs.mkdirSync('Test Results/Web', { recursive: true });
 
-      - name: Stage 4 - Verify Reconstructed Report Directories & Files
+            console.log("Fetching repository artifact metadata via GitHub API...");
+            const artifactsResp = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+
+            const artifacts = artifactsResp.data.artifacts || [];
+            console.log(`Found ${artifacts.length} total artifacts in repository.`);
+
+            // Search for mobile artifact
+            const mobileArtifact = artifacts.find(a => a.name === 'smartstudy-mobile-reports' && !a.expired);
+            if (mobileArtifact) {
+              console.log(`Downloading Mobile Report Artifact ID: ${mobileArtifact.id} (Name: ${mobileArtifact.name}, Created: ${mobileArtifact.created_at})...`);
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: mobileArtifact.id,
+                archive_format: 'zip'
+              });
+              fs.writeFileSync('mobile-reports.zip', Buffer.from(download.data));
+              execSync('unzip -o mobile-reports.zip -d "Test Results/Mobile"');
+              fs.unlinkSync('mobile-reports.zip');
+              console.log("✅ Mobile report artifact extracted into Test Results/Mobile/");
+            } else {
+              console.log("⚠️ No non-expired 'smartstudy-mobile-reports' artifact found in repository.");
+            }
+
+            // Search for web artifact
+            const webArtifact = artifacts.find(a => a.name === 'smartstudy-web-reports' && !a.expired);
+            if (webArtifact) {
+              console.log(`Downloading Web Report Artifact ID: ${webArtifact.id} (Name: ${webArtifact.name}, Created: ${webArtifact.created_at})...`);
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: webArtifact.id,
+                archive_format: 'zip'
+              });
+              fs.writeFileSync('web-reports.zip', Buffer.from(download.data));
+              execSync('unzip -o web-reports.zip -d "Test Results/Web"');
+              fs.unlinkSync('web-reports.zip');
+              console.log("✅ Web report artifact extracted into Test Results/Web/");
+            } else {
+              console.log("⚠️ No non-expired 'smartstudy-web-reports' artifact found in repository.");
+            }
+
+      - name: Stage 4 - Strict Validation of Reconstructed Test Results & Reports
         run: |
           echo "==================================================="
-          echo "   VERIFYING RECONSTRUCTED TEST RESULTS DIRECTORY  "
+          echo "   STRICT VALIDATION OF RECONSTRUCTED REPORTS      "
           echo "==================================================="
           
-          mkdir -p "Test Results"
-          HAS_REPORTS=false
-          
-          if [ -d "Test Results/Mobile" ]; then
-            echo "✅ Found Mobile Reports:"
-            ls -la "Test Results/Mobile"
-            HAS_REPORTS=true
+          echo "📁 Downloaded Artifact Directory Tree (Test Results/):"
+          ls -R "Test Results"
+
+          HAS_ERROR=false
+
+          echo "Checking Mobile Reports Directory..."
+          if [ ! -d "Test Results/Mobile" ]; then
+            echo "❌ [ERROR] Directory 'Test Results/Mobile' missing!"
+            HAS_ERROR=true
           else
-            echo "⚠️ Mobile report directory 'Test Results/Mobile' not downloaded."
-          fi
-          
-          if [ -d "Test Results/Web" ]; then
-            echo "✅ Found Web Reports:"
-            ls -la "Test Results/Web"
-            HAS_REPORTS=true
-          else
-            echo "⚠️ Web report directory 'Test Results/Web' not downloaded."
+            echo "✅ Mobile directory exists."
           fi
 
-          if [ "$HAS_REPORTS" = false ]; then
-            echo "❌ [ERROR] No report artifacts found! Neither Mobile nor Web report artifacts were downloaded."
+          echo "Checking Web Reports Directory..."
+          if [ ! -d "Test Results/Web" ]; then
+            echo "❌ [ERROR] Directory 'Test Results/Web' missing!"
+            HAS_ERROR=true
+          else
+            echo "✅ Web directory exists."
+          fi
+
+          if [ "$HAS_ERROR" = true ]; then
+            echo "❌ [FATAL] Required report artifact directories are missing!"
             exit 1
           fi
+
+          echo "Checking report files..."
+          MOBILE_HTML=$(find "Test Results/Mobile" -name "*.html" | head -n 1)
+          WEB_HTML=$(find "Test Results/Web" -name "*.html" | head -n 1)
+          MOBILE_EXCEL=$(find "Test Results/Mobile" -name "*.xlsx" | head -n 1)
+          WEB_EXCEL=$(find "Test Results/Web" -name "*.xlsx" | head -n 1)
+
+          echo "---------------------------------------------------"
+          echo "📄 Report File Path Inventory:"
+          echo "  - Mobile HTML Report Path:  ${MOBILE_HTML:-MISSING}"
+          echo "  - Mobile Excel Report Path: ${MOBILE_EXCEL:-MISSING}"
+          echo "  - Web HTML Report Path:     ${WEB_HTML:-MISSING}"
+          echo "  - Web Excel Report Path:    ${WEB_EXCEL:-MISSING}"
+          echo "---------------------------------------------------"
+
+          if [ -z "$MOBILE_HTML" ] && [ -z "$WEB_HTML" ]; then
+            echo "❌ [FATAL] Neither Mobile nor Web HTML report files were found!"
+            exit 1
+          fi
+
+          echo "✅ Strict Validation PASSED cleanly!"
 
       - name: Stage 5 - Deploy Reconstructed Reports to GitHub Pages Branch (gh-pages)
         uses: JamesIves/github-pages-deploy-action@v4

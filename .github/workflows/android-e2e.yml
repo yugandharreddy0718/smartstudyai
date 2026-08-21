@@ -59,7 +59,7 @@ jobs:
           node appium-tests/runner.js || node automation/runners/testRunner.js
 
       # Stage 18: Upload Deliverables as Artifacts
-      - name: Stage 18 - Upload Test Deliverables & Artifacts (30 Days Retention)
+      - name: Stage 18 - Upload Mobile Report Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
