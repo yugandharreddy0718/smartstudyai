@@ -1,11 +1,11 @@
-name: Deploy QA Execution Reports to GitHub Pages
+name: GitHub Pages Report Deployment
 
 on:
+  workflow_dispatch:
   workflow_run:
-    workflows: ["Android Appium E2E Automation & CI/CD Pipeline"]
+    workflows: ["Android Appium E2E Automation & CI/CD Pipeline", "Selenium Web E2E Automation & CI/CD Pipeline"]
     types:
       - completed
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,18 +14,18 @@ permissions:
 
 jobs:
   deploy-reports-to-pages:
-    name: Publish Latest & Historical Reports to GitHub Pages
+    name: Publish QA & Test Reports to GitHub Pages
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy to GitHub Pages Branch (gh-pages)
+      - name: Deploy Live Reports to GitHub Pages Branch (gh-pages)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: Test Results/Mobile
-          target-folder: reports/latest
+          folder: Test Results
+          target-folder: reports
           branch: gh-pages
           clean: false
           token: ${{ secrets.GITHUB_TOKEN }}
