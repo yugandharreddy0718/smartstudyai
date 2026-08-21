@@ -1,0 +1,9 @@
+{
+  "name": "@smartstudy/firebase",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "firebase-web.ts",
+  "dependencies": {
+    "firebase": "^12.13.0"
+  }
+}

@@ -3,6 +3,36 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import nodemailer from 'nodemailer';
+
+// Helper function to create an email transporter
+async function getEmailTransporter() {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (host && user && pass) {
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass }
+    });
+  }
+
+  // Fallback to Ethereal account for development / testing when SMTP env vars are not set
+  const testAccount = await nodemailer.createTestAccount();
+  return nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: testAccount.user,
+      pass: testAccount.pass,
+    },
+  });
+}
 
 // Initialize Gemini safely on the server
 const apiKey = process.env.GEMINI_API_KEY;
@@ -27,6 +57,48 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // API Routes
+  app.post('/api/auth/send-otp', async (req, res) => {
+    try {
+      const { email, code } = req.body;
+      if (!email || !code) {
+        return res.status(400).json({ error: 'Email and code are required' });
+      }
+
+      const transporter = await getEmailTransporter();
+      const mailOptions = {
+        from: `"SmartStudy AI" <${process.env.SMTP_FROM || 'noreply@smartstudyai.com'}>`,
+        to: email,
+        subject: `${code} is your SmartStudy AI Verification Code`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #4f46e5; margin: 0; font-size: 24px;">SmartStudy AI</h2>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Verification Code</p>
+            </div>
+            <p style="color: #334155; font-size: 15px;">Hello,</p>
+            <p style="color: #334155; font-size: 15px;">Your 6-digit verification code to sign in to SmartStudy AI is:</p>
+            <div style="background-color: #f1f5f9; padding: 18px; text-align: center; border-radius: 12px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a; margin: 24px 0; border: 1px dashed #cbd5e1;">
+              ${code}
+            </div>
+            <p style="color: #64748b; font-size: 13px;">This code will expire in 10 minutes. If you did not request this verification code, please ignore this email.</p>
+          </div>
+        `,
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[Email Service] OTP code email dispatched to ${email}. Message ID: ${info.messageId}`);
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log(`[Email Service] Preview URL for test email: ${previewUrl}`);
+      }
+
+      res.json({ success: true, message: `OTP code sent to ${email}` });
+    } catch (error: any) {
+      console.error('Error sending OTP email:', error);
+      res.status(500).json({ error: error.message || 'Failed to send OTP email' });
+    }
+  });
+
   app.post('/api/gemini/summary', async (req, res) => {
     try {
       const { text } = req.body;
