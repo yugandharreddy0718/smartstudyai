@@ -36,16 +36,20 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
-      # Stage 4: Install Dependencies & Prepare Report Directories
-      - name: Stage 4 - Install Project Dependencies & Setup Directories
+      # Stage 4: Install Dependencies & Prepare Standardized Report Directories
+      - name: Stage 4 - Install Project Dependencies & Setup Standardized Directories
         run: |
-          mkdir -p "Test Results/Mobile/Excel" "Test Results/Mobile/HTML" "Test Results/Mobile/JSON" "Test Results/Mobile/Screenshots" "Test Results/Mobile/Logs" "Test Results/Mobile/Summary"
+          mkdir -p "Test Results/Mobile/reports/latest"
+          mkdir -p "Test Results/Mobile/excel"
+          mkdir -p "Test Results/Mobile/screenshots"
+          mkdir -p "Test Results/Mobile/logs"
+          mkdir -p "Test Results/Mobile/Summary"
           npm install --legacy-peer-deps
 
       # Stage 5-17: Execute Appium E2E Automation Suite & Report Compilation
       - name: Stage 5-17 - Execute Appium Suite & Compile Reports
         run: |
-          node appium-tests/runner.js || node automation/runners/testRunner.js || echo "Appium test suite executed."
+          node appium-tests/runner.js || node automation/runners/testRunner.js
 
       # Stage 18: Upload Deliverables as Artifacts
       - name: Stage 18 - Upload Test Deliverables & Artifacts (30 Days Retention)
@@ -55,6 +59,34 @@ jobs:
           name: SmartStudy-Android-Appium-QA-Deliverables-Build-${{ github.run_number }}
           path: Test Results/Mobile/
           retention-days: 30
+
+      # Validation Step Immediately Before Publishing
+      - name: Stage 18.5 - Validate Generated Mobile Reports & Print Paths
+        run: |
+          echo "==================================================="
+          echo "   VALIDATING GENERATED MOBILE REPORTS DIRECTORY   "
+          echo "==================================================="
+          if [ ! -d "Test Results/Mobile" ]; then
+            echo "[ERROR] Standardized directory 'Test Results/Mobile' does not exist!"
+            exit 1
+          fi
+          echo "Contents of Test Results/Mobile:"
+          ls -la "Test Results/Mobile"
+          
+          if [ ! -f "Test Results/Mobile/reports/latest/index.html" ] && [ ! -f "Test Results/Mobile/reports/latest/appium-report.html" ] && [ ! -f "Test Results/Mobile/appium-report.html" ]; then
+            echo "[ERROR] HTML Report file missing in Test Results/Mobile!"
+            exit 1
+          fi
+
+          if [ ! -f "Test Results/Mobile/excel/appium-report.xlsx" ] && [ ! -f "Test Results/Mobile/appium-report.xlsx" ]; then
+            echo "[ERROR] Excel Report file missing in Test Results/Mobile!"
+            exit 1
+          fi
+
+          echo "✅ HTML Report verified:"
+          ls -la "Test Results/Mobile/reports/latest/" || ls -la "Test Results/Mobile/"
+          echo "✅ Excel Report verified:"
+          ls -la "Test Results/Mobile/excel/" || ls -la "Test Results/Mobile/"
 
       # Stage 19 & 20: Publish Reports to GitHub Pages
       - name: Stage 19-20 - Publish Live Reports to GitHub Pages

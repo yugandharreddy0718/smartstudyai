@@ -156,11 +156,44 @@ export async function generateAppiumReports(results, totalDuration) {
   fs.writeFileSync(htmlPath, htmlContent, 'utf8');
   console.log(`HTML Report saved to: ${htmlPath}`);
 
-  // Also sync to root Test Results directory
-  const mobileResultsDir = path.resolve(__dirname, '../../Test Results/Mobile');
-  if (!fs.existsSync(mobileResultsDir)) {
-    fs.mkdirSync(mobileResultsDir, { recursive: true });
-  }
-  fs.copyFileSync(excelPath, path.join(mobileResultsDir, 'appium-report.xlsx'));
-  fs.copyFileSync(htmlPath, path.join(mobileResultsDir, 'appium-report.html'));
+  // Populate standardized directory structure: Test Results/Mobile/
+  const mobileBaseDir = path.resolve(__dirname, '../../Test Results/Mobile');
+  const reportsLatestDir = path.join(mobileBaseDir, 'reports/latest');
+  const excelDir = path.join(mobileBaseDir, 'excel');
+  const screenshotsDir = path.join(mobileBaseDir, 'screenshots');
+  const logsDir = path.join(mobileBaseDir, 'logs');
+  const summaryDir = path.join(mobileBaseDir, 'Summary');
+
+  fs.mkdirSync(reportsLatestDir, { recursive: true });
+  fs.mkdirSync(excelDir, { recursive: true });
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+  fs.mkdirSync(logsDir, { recursive: true });
+  fs.mkdirSync(summaryDir, { recursive: true });
+
+  // Copy HTML reports
+  fs.copyFileSync(htmlPath, path.join(reportsLatestDir, 'appium-report.html'));
+  fs.copyFileSync(htmlPath, path.join(reportsLatestDir, 'index.html'));
+  fs.copyFileSync(htmlPath, path.join(mobileBaseDir, 'appium-report.html'));
+
+  // Copy Excel reports
+  fs.copyFileSync(excelPath, path.join(excelDir, 'appium-report.xlsx'));
+  fs.copyFileSync(excelPath, path.join(mobileBaseDir, 'appium-report.xlsx'));
+
+  // Write Summary Markdown
+  const summaryMd = `# Android Appium E2E Automation Summary
+
+- **Total Test Cases:** ${results.length}
+- **Passed:** ${passed}
+- **Failed:** ${failed}
+- **Pass Rate:** ${passRate}%
+- **Execution Time:** ${(totalDuration / 1000).toFixed(2)} seconds
+- **Timestamp:** ${new Date().toLocaleString()}
+
+### Reports Generated
+- **HTML Report:** \`Test Results/Mobile/reports/latest/index.html\`
+- **Excel Analysis Report:** \`Test Results/Mobile/excel/appium-report.xlsx\`
+`;
+
+  fs.writeFileSync(path.join(summaryDir, 'summary.md'), summaryMd, 'utf8');
+  fs.writeFileSync(path.join(logsDir, 'summary.md'), summaryMd, 'utf8');
 }
