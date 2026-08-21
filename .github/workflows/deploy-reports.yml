@@ -22,7 +22,7 @@ jobs:
       - name: Stage 1 - Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Stage 2 & 3 - Download E2E Report Artifacts from Upstream Run & Repository
+      - name: Stage 2 & 3 - Download E2E Report Artifacts & Print Diagnostic Locations
         uses: actions/github-script@v7
         with:
           script: |
@@ -32,6 +32,8 @@ jobs:
 
             fs.mkdirSync('Test Results/Mobile', { recursive: true });
             fs.mkdirSync('Test Results/Web', { recursive: true });
+
+            console.log("Current working directory (pwd):", process.cwd());
 
             console.log("Fetching repository artifact metadata via GitHub API...");
             const artifactsResp = await github.rest.actions.listArtifactsForRepo({
@@ -46,7 +48,7 @@ jobs:
             // Search for mobile artifact
             const mobileArtifact = artifacts.find(a => a.name === 'smartstudy-mobile-reports' && !a.expired);
             if (mobileArtifact) {
-              console.log(`Downloading Mobile Report Artifact ID: ${mobileArtifact.id} (Name: ${mobileArtifact.name}, Created: ${mobileArtifact.created_at})...`);
+              console.log(`Downloading Mobile Report Artifact ID: ${mobileArtifact.id} (Created: ${mobileArtifact.created_at})...`);
               const download = await github.rest.actions.downloadArtifact({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -64,7 +66,7 @@ jobs:
             // Search for web artifact
             const webArtifact = artifacts.find(a => a.name === 'smartstudy-web-reports' && !a.expired);
             if (webArtifact) {
-              console.log(`Downloading Web Report Artifact ID: ${webArtifact.id} (Name: ${webArtifact.name}, Created: ${webArtifact.created_at})...`);
+              console.log(`Downloading Web Report Artifact ID: ${webArtifact.id} (Created: ${webArtifact.created_at})...`);
               const download = await github.rest.actions.downloadArtifact({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -85,57 +87,89 @@ jobs:
           echo "   STRICT VALIDATION OF RECONSTRUCTED REPORTS      "
           echo "==================================================="
           
-          echo "📁 Downloaded Artifact Directory Tree (Test Results/):"
-          ls -R "Test Results"
-
           HAS_ERROR=false
 
-          echo "Checking Mobile Reports Directory..."
+          echo "Working directory (pwd):"
+          pwd
+
+          if [ ! -d "Test Results" ]; then
+            echo "❌ [ERROR] Directory 'Test Results' does not exist!"
+            HAS_ERROR=true
+          else
+            echo "✅ 'Test Results' directory exists."
+          fi
+
           if [ ! -d "Test Results/Mobile" ]; then
-            echo "❌ [ERROR] Directory 'Test Results/Mobile' missing!"
+            echo "❌ [ERROR] Directory 'Test Results/Mobile' does not exist!"
             HAS_ERROR=true
           else
-            echo "✅ Mobile directory exists."
+            echo "✅ 'Test Results/Mobile' directory exists."
           fi
 
-          echo "Checking Web Reports Directory..."
           if [ ! -d "Test Results/Web" ]; then
-            echo "❌ [ERROR] Directory 'Test Results/Web' missing!"
+            echo "❌ [ERROR] Directory 'Test Results/Web' does not exist!"
             HAS_ERROR=true
           else
-            echo "✅ Web directory exists."
+            echo "✅ 'Test Results/Web' directory exists."
           fi
 
-          if [ "$HAS_ERROR" = true ]; then
-            echo "❌ [FATAL] Required report artifact directories are missing!"
-            exit 1
-          fi
+          echo "📁 Discovering Test Results Directories (find 'Test Results' -maxdepth 5 -type d):"
+          find "Test Results" -maxdepth 5 -type d | sort
 
-          echo "Checking report files..."
+          echo "📄 Discovering Test Results Files (find 'Test Results' -maxdepth 5 -type f):"
+          find "Test Results" -maxdepth 5 -type f | sort
+
           MOBILE_HTML=$(find "Test Results/Mobile" -name "*.html" | head -n 1)
-          WEB_HTML=$(find "Test Results/Web" -name "*.html" | head -n 1)
           MOBILE_EXCEL=$(find "Test Results/Mobile" -name "*.xlsx" | head -n 1)
+          WEB_HTML=$(find "Test Results/Web" -name "*.html" | head -n 1)
           WEB_EXCEL=$(find "Test Results/Web" -name "*.xlsx" | head -n 1)
 
           echo "---------------------------------------------------"
-          echo "📄 Report File Path Inventory:"
-          echo "  - Mobile HTML Report Path:  ${MOBILE_HTML:-MISSING}"
-          echo "  - Mobile Excel Report Path: ${MOBILE_EXCEL:-MISSING}"
-          echo "  - Web HTML Report Path:     ${WEB_HTML:-MISSING}"
-          echo "  - Web Excel Report Path:    ${WEB_EXCEL:-MISSING}"
+          echo "📄 Discovered Report File Paths:"
+          echo "  1. Mobile HTML Report:  ${MOBILE_HTML:-MISSING}"
+          echo "  2. Mobile Excel Report: ${MOBILE_EXCEL:-MISSING}"
+          echo "  3. Web HTML Report:     ${WEB_HTML:-MISSING}"
+          echo "  4. Web Excel Report:    ${WEB_EXCEL:-MISSING}"
           echo "---------------------------------------------------"
 
-          if [ -z "$MOBILE_HTML" ] && [ -z "$WEB_HTML" ]; then
-            echo "❌ [FATAL] Neither Mobile nor Web HTML report files were found!"
+          if [ -z "$MOBILE_HTML" ]; then
+            echo "❌ [ERROR] Mobile HTML Report file is missing!"
+            HAS_ERROR=true
+          fi
+
+          if [ -z "$MOBILE_EXCEL" ]; then
+            echo "❌ [ERROR] Mobile Excel Report file is missing!"
+            HAS_ERROR=true
+          fi
+
+          if [ -z "$WEB_HTML" ]; then
+            echo "❌ [ERROR] Web HTML Report file is missing!"
+            HAS_ERROR=true
+          fi
+
+          if [ -z "$WEB_EXCEL" ]; then
+            echo "❌ [ERROR] Web Excel Report file is missing!"
+            HAS_ERROR=true
+          fi
+
+          if [ "$HAS_ERROR" = true ]; then
+            echo "❌ [FATAL] Report validation failed! One or more required report files or directories are missing."
             exit 1
           fi
 
-          echo "✅ Strict Validation PASSED cleanly!"
+          echo "✅ Strict Report Validation PASSED 100%!"
+
+          # Prepare deployment directory without spaces for deployment action compatibility
+          cp -r "Test Results" deploy-results
+          echo "✅ Deployment mirror 'deploy-results' prepared cleanly."
+
+          echo "📁 Discovering deploy-results Files (find deploy-results -maxdepth 5 -type f):"
+          find deploy-results -maxdepth 5 -type f | sort
 
       - name: Stage 5 - Deploy Reconstructed Reports to GitHub Pages Branch (gh-pages)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: Test Results
+          folder: deploy-results
           target-folder: reports
           branch: gh-pages
           clean: false
