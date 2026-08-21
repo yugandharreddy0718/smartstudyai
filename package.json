@@ -20,7 +20,10 @@
     "test:coverage": "npm test --workspace=web",
     "test:selenium": "node selenium-tests/runner.js",
     "test:selenium:chrome": "node selenium-tests/runner.js",
-    "report:selenium": "node -e \"console.log('Selenium reports available in selenium-tests/reports/')\""
+    "report:selenium": "node -e \"console.log('Selenium reports available in selenium-tests/reports/')\"",
+    "test:appium": "node appium-tests/runner.js",
+    "test:appium:sim": "node appium-tests/runner.js",
+    "report:appium": "node -e \"console.log('Appium reports available in appium-tests/reports/')\""
   },
   "dependencies": {
     "exceljs": "^4.4.0",

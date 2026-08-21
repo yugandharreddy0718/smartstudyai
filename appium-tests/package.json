@@ -1,11 +1,13 @@
 {
   "name": "smartstudy-appium-tests",
   "version": "1.0.0",
-  "description": "End-to-End Appium testing and Excel reporting for SmartStudy AI",
-  "main": "run-tests.js",
+  "description": "End-to-End Appium Mobile Automation & Excel Analysis Framework for SmartStudy AI Android App",
+  "main": "runner.js",
   "type": "module",
   "scripts": {
-    "test": "node run-tests.js"
+    "test": "node runner.js",
+    "test:runner": "node runner.js",
+    "report": "node utils/excelReporter.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
