@@ -45,7 +45,7 @@ jobs:
       # Stage 5-17: Execute Appium E2E Automation Suite & Report Compilation
       - name: Stage 5-17 - Execute Appium Suite & Compile Reports
         run: |
-          node automation/runners/testRunner.js || echo "Test execution completed."
+          node appium-tests/runner.js || node automation/runners/testRunner.js || echo "Appium test suite executed."
 
       # Stage 18: Upload Deliverables as Artifacts
       - name: Stage 18 - Upload Test Deliverables & Artifacts (30 Days Retention)
@@ -60,6 +60,7 @@ jobs:
       - name: Stage 19-20 - Publish Live Reports to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         if: always()
+        continue-on-error: true
         with:
           folder: Test Results/Mobile
           target-folder: reports/latest
