@@ -15,5 +15,9 @@
     "build:web": "npm run build --workspace=web",
     "build:backend": "npm run build --workspace=backend",
     "test": "npm test --workspaces"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "selenium-webdriver": "^4.47.0"
   }
 }

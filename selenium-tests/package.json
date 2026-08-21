@@ -1,0 +1,15 @@
+{
+  "name": "smartstudy-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium Web End-to-End Automation & Excel Analysis Report Generator for SmartStudy AI",
+  "type": "module",
+  "main": "run-tests.js",
+  "scripts": {
+    "test": "node run-tests.js"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.18.1",
+    "chromedriver": "^122.0.0",
+    "exceljs": "^4.4.0"
+  }
+}
