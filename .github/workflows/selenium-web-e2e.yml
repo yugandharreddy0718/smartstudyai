@@ -66,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: SmartStudy-Web-Selenium-QA-Deliverables-Build-${{ github.run_number }}
+          name: smartstudy-web-reports
           path: Test Results/Web/
           retention-days: 30
 

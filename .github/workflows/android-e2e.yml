@@ -45,6 +45,13 @@ jobs:
           mkdir -p "Test Results/Mobile/logs"
           mkdir -p "Test Results/Mobile/Summary"
           npm install --legacy-peer-deps
+          cd appium-tests && npm install --legacy-peer-deps && cd ..
+          cd automation && npm install --legacy-peer-deps && cd ..
+
+      # Stage 4.5: Dependency Diagnostic Step
+      - name: Stage 4.5 - Diagnostic WebdriverIO Dependency Check
+        run: |
+          cd appium-tests && node -e "console.log('✅ WebdriverIO module path:', require.resolve('webdriverio'))" && cd ..
 
       # Stage 5-17: Execute Appium E2E Automation Suite & Report Compilation
       - name: Stage 5-17 - Execute Appium Suite & Compile Reports
@@ -56,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: SmartStudy-Android-Appium-QA-Deliverables-Build-${{ github.run_number }}
+          name: smartstudy-mobile-reports
           path: Test Results/Mobile/
           retention-days: 30
 

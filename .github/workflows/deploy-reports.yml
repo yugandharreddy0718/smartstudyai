@@ -14,14 +14,58 @@ permissions:
 
 jobs:
   deploy-reports-to-pages:
-    name: Publish QA & Test Reports to GitHub Pages
+    name: Publish Real QA & Test Reports to GitHub Pages
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Stage 1 - Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy Live Reports to GitHub Pages Branch (gh-pages)
+      - name: Stage 2 - Download Mobile Report Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: smartstudy-mobile-reports
+          path: Test Results/Mobile
+
+      - name: Stage 3 - Download Web Report Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: smartstudy-web-reports
+          path: Test Results/Web
+
+      - name: Stage 4 - Verify Reconstructed Report Directories & Files
+        run: |
+          echo "==================================================="
+          echo "   VERIFYING RECONSTRUCTED TEST RESULTS DIRECTORY  "
+          echo "==================================================="
+          
+          mkdir -p "Test Results"
+          HAS_REPORTS=false
+          
+          if [ -d "Test Results/Mobile" ]; then
+            echo "✅ Found Mobile Reports:"
+            ls -la "Test Results/Mobile"
+            HAS_REPORTS=true
+          else
+            echo "⚠️ Mobile report directory 'Test Results/Mobile' not downloaded."
+          fi
+          
+          if [ -d "Test Results/Web" ]; then
+            echo "✅ Found Web Reports:"
+            ls -la "Test Results/Web"
+            HAS_REPORTS=true
+          else
+            echo "⚠️ Web report directory 'Test Results/Web' not downloaded."
+          fi
+
+          if [ "$HAS_REPORTS" = false ]; then
+            echo "❌ [ERROR] No report artifacts found! Neither Mobile nor Web report artifacts were downloaded."
+            exit 1
+          fi
+
+      - name: Stage 5 - Deploy Reconstructed Reports to GitHub Pages Branch (gh-pages)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: Test Results

@@ -43,12 +43,14 @@ jobs:
         run: |
           npm run build:web
           npm run build:backend
+          pwd
+          find . -maxdepth 3 -type d -name dist
 
       - name: Stage 7 - Upload Build Bundle Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: SmartStudy-AI-Production-Bundle
-          path: dist/
+          path: web/dist/
           retention-days: 30
 
   deploy-web-app:
@@ -71,11 +73,13 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm run build:web
+          pwd
+          find . -maxdepth 3 -type d -name dist
 
       - name: Deploy Production App to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist
+          folder: web/dist
           target-folder: app
           branch: gh-pages
           clean: false
