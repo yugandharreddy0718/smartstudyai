@@ -94,7 +94,7 @@ jobs:
 
       # Stage 18: Upload Artifacts
       - name: Stage 18 - Upload Test Deliverables & Artifacts (30 Days Retention)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: SmartStudy-Android-Appium-QA-Deliverables-Build-${{ github.run_number }}
