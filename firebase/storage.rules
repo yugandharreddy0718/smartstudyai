@@ -1,0 +1,54 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function: Check if request is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function: Check if authenticated user has Admin or SuperAdmin custom claim
+    function isAdmin() {
+      return isSignedIn() &&
+             request.auth.token != null &&
+             (request.auth.token.role == 'admin' || request.auth.token.role == 'superAdmin');
+    }
+
+    // Helper function: Validate PDF upload constraints (PDF MIME type, max 50MB size, non-empty)
+    function isValidPdfUpload() {
+      return request.resource != null &&
+             request.resource.size > 0 &&
+             request.resource.size <= 50 * 1024 * 1024 && // 50MB limit
+             request.resource.contentType == 'application/pdf';
+    }
+
+    // ==========================================
+    // CANONICAL BOOK STORAGE PATH: books/{classId}/{subjectId}/{fileName}
+    // ==========================================
+    match /books/{classId}/{subjectId}/{fileName} {
+      // READ ACCESS:
+      // - Admins and SuperAdmins can read any book (published, draft, or unpublished)
+      // - Signed-in students can ONLY read books where Storage object metadata.status == 'published'
+      // - Draft and Unpublished books are strictly DENIED to students & unauthenticated users
+      allow read: if isAdmin() || (
+        isSignedIn() && 
+        resource != null && 
+        resource.metadata != null && 
+        resource.metadata.status == 'published'
+      );
+
+      // WRITE ACCESS (CREATE/UPDATE): ONLY Admins/SuperAdmins with valid <=50MB PDF
+      allow create, update: if isAdmin() && isValidPdfUpload();
+
+      // DELETE ACCESS: ONLY Admins/SuperAdmins can delete storage objects
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // GLOBAL SAFETY NET: Deny all unhandled paths
+    // ==========================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

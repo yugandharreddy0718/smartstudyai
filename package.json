@@ -1,0 +1,26 @@
+{
+  "name": "smartstudy-ai-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "web",
+    "mobile",
+    "shared",
+    "firebase"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:web": "npm run dev --workspace=web",
+    "build:web": "npm run build --workspace=web",
+    "build:backend": "npm run build --workspace=backend",
+    "typecheck": "npm run typecheck --workspace=web",
+    "build": "npm run build:web && npm run build:backend",
+    "test": "npm test --workspace=web",
+    "test:coverage": "npm test --workspace=web"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "selenium-webdriver": "^4.47.0"
+  }
+}

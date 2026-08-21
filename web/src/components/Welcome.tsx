@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { Sparkles, ArrowRight, BookOpen, BrainCircuit, BarChart3, AlertCircle } from 'lucide-react';
+import { signInAsGuest } from '@smartstudy/firebase';
+import { Link, useNavigate } from 'react-router-dom';
+import { cn } from '../lib/utils';
+
+export default function Welcome() {
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await signInAsGuest();
+      navigate('/');
+    } catch (e: any) {
+      console.error(e);
+      setError("Guest sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-0 -left-20 w-96 h-96 bg-brand-primary/10 rounded-full blur-3xl animate-float" />
+      <div className="absolute bottom-0 -right-20 w-96 h-96 bg-brand-secondary/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md bg-white rounded-[2.5rem] p-8 shadow-2xl relative z-10 border border-slate-100"
+      >
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-slate-900/20">
+            <Sparkles className="text-white w-8 h-8" />
+          </div>
+          <h1 className="font-display font-bold text-3xl text-slate-900 mb-1 tracking-tight">SmartStudy AI</h1>
+          <p className="text-slate-500 font-medium text-sm">Your AI-powered learning companion</p>
+        </div>
+
+        <div className="space-y-3 mb-8">
+          <FeatureItem icon={BrainCircuit} text="AI-powered study analysis" color="bg-indigo-50 text-indigo-600" />
+          <FeatureItem icon={BookOpen} text="Personalized lesson notes" color="bg-rose-50 text-rose-600" />
+          <FeatureItem icon={BarChart3} text="Real-time progress tracking" color="bg-emerald-50 text-emerald-600" />
+        </div>
+
+        <div className="space-y-3">
+          <Link 
+            to="/login"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-indigo-600/20 text-sm"
+          >
+            Login
+          </Link>
+          
+          <Link 
+            to="/register"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm"
+          >
+            Create Account
+          </Link>
+
+          <button 
+            onClick={handleGuestLogin}
+            disabled={loading}
+            className="w-full bg-white text-slate-700 border border-slate-200 py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50 text-sm"
+          >
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Continue as Guest</span>
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-4 p-3.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 text-xs font-medium animate-shake">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+
+      </motion.div>
+    </div>
+  );
+}
+
+function FeatureItem({ icon: Icon, text, color }: { icon: any, text: string, color: string }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <span className="text-slate-700 font-medium text-xs">{text}</span>
+    </div>
+  );
+}

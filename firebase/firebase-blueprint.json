@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student profile and progress data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "studentClass": { "type": "string", "enum": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] },
+        "xp": { "type": "number" },
+        "streak": { "type": "number" },
+        "level": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "badges": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Learning subjects available for a class",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "class": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" }
+      }
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Chapters within a subject",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "number" },
+        "description": { "type": "string" }
+      }
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "Lesson content, could be admin-uploaded or student-uploaded",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "text", "image"] },
+        "fileUrl": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "aiAnalysis": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "AI generated or static quizzes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "lessonId": { "type": "string" },
+        "title": { "type": "string" },
+        "questions": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Result": {
+      "title": "Result",
+      "description": "Quiz attempt results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "quizId": { "type": "string" },
+        "score": { "type": "number" },
+        "total": { "type": "number" },
+        "analytics": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "AI Tutor chat history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "messages": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/subjects/{subjectId}": {
+      "schema": "Subject",
+      "description": "Available subjects"
+    },
+    "/subjects/{subjectId}/chapters/{chapterId}": {
+      "schema": "Chapter",
+      "description": "Chapters per subject"
+    },
+    "/lessons/{lessonId}": {
+      "schema": "Lesson",
+      "description": "Lesson documents"
+    },
+    "/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Quiz definitions"
+    },
+    "/results/{resultId}": {
+      "schema": "Result",
+      "description": "Quiz results"
+    },
+    "/chats/{chatId}": {
+      "schema": "ChatSession",
+      "description": "Chat histories"
+    }
+  }
+}
