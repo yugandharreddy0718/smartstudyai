@@ -4,6 +4,6 @@
   "type": "module",
   "main": "firebase-web.ts",
   "dependencies": {
-    "firebase": "^12.13.0"
+    "firebase": "^12.17.1"
   }
 }
