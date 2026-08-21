@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Target URL parameter, defaults to local dev/prod server
-const targetUrl = process.env.TARGET_URL || 'http://localhost:3000';
+const targetUrl = process.env.TARGET_URL || 'http://localhost:5173';
 
 console.log(`==================================================`);
 console.log(`      SMARTSTUDY AI - API LOAD TESTING SUITE      `);
