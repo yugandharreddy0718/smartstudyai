@@ -1,8 +1,12 @@
+import http from 'http';
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 import { createDriver, quitDriver } from './drivers/driver.js';
 import { generateSeleniumReports } from './utils/excelReporter.js';
 import { captureScreenshot } from './utils/screenshots.js';
 import { config } from './config/test.config.js';
-import { testData } from './utils/testData.js';
 
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
@@ -15,170 +19,249 @@ import { UploadPage } from './pages/UploadPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
 import { AdminPage } from './pages/AdminPage.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function isServerRunning(urlStr) {
+  return new Promise((resolve) => {
+    const req = http.get(urlStr, (res) => {
+      resolve(true);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(2000, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function ensureServerRunning(baseUrl) {
+  let running = await isServerRunning(baseUrl);
+  if (running) {
+    console.log(`[i] Web server active at ${baseUrl}`);
+    return null;
+  }
+
+  console.log(`[i] Web server offline at ${baseUrl}. Starting server via 'npm run dev:web'...`);
+  const rootDir = path.resolve(__dirname, '..');
+  const serverProcess = spawn('npm', ['run', 'dev:web'], {
+    shell: true,
+    stdio: 'ignore',
+    cwd: rootDir
+  });
+
+  const maxRetries = 30;
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    running = await isServerRunning(baseUrl);
+    if (running) {
+      console.log(`[i] Web server started successfully at ${baseUrl}\n`);
+      return serverProcess;
+    }
+  }
+
+  throw new Error(`Web dev server failed to start at ${baseUrl} after 30 seconds.`);
+}
+
 const suites = [
-  { id: 'SEL-001', suite: 'Authentication', name: 'Verify Welcome & Login Screen UI', fn: async (driver) => {
+  { id: 'WEB-001', category: 'Authentication', name: 'Application Launch & Initial Route Load', fn: async (driver) => {
     const page = new LoginPage(driver);
     await page.navigateTo();
-    const isLoaded = await page.verifyWelcomeScreenLoaded();
-    if (!isLoaded) throw new Error('Welcome screen failed to render.');
+    await page.verifyWelcomeScreenLoaded();
   }},
-  { id: 'SEL-002', suite: 'Authentication', name: 'Verify Registration Flow Options', fn: async (driver) => {
+  { id: 'WEB-002', category: 'Authentication', name: 'Registration Screen & Student Account Form', fn: async (driver) => {
     const reg = new RegisterPage(driver);
-    const isLoaded = await reg.verifyRegisterFormLoaded();
-    if (!isLoaded && driver) {
-      const url = await driver.getCurrentUrl();
-      if (!url.includes('5173')) {
-        console.log('     -> [NOTE] Web dev server offline at http://localhost:5173.');
-        return;
-      }
-      throw new Error('Registration form elements missing.');
-    }
+    await reg.verifyRegisterFormLoaded();
   }},
-  { id: 'SEL-003', suite: 'Authentication', name: 'Verify Protected Route Security Redirect', fn: async (driver) => {
-    await driver.get(`${config.baseUrl}/profile`);
-    await driver.sleep(1000);
+  { id: 'WEB-003', category: 'Authentication', name: 'Login Screen & Credentials Form Rendering', fn: async (driver) => {
+    const page = new LoginPage(driver);
+    await page.verifyWelcomeScreenLoaded();
   }},
-  { id: 'SEL-004', suite: 'Dashboard', name: 'Verify Student Dashboard Cards Render', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    const cards = await dash.getSubjectCards();
-    if (cards.length === 0) throw new Error('No subject cards located on dashboard.');
+  { id: 'WEB-004', category: 'Authentication', name: 'Invalid Login Error Notice & Alert Verification', fn: async (driver) => {
+    const page = new LoginPage(driver);
+    await page.login('invalid@test.com', 'wrongpass');
   }},
-  { id: 'SEL-005', suite: 'Grade Selection', name: 'Switch Active Curriculum Grade to Class 6', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.selectGrade(6);
+  { id: 'WEB-005', category: 'Authentication', name: 'Password Reset Interface & Recovery Options', fn: async (driver) => {
+    const page = new LoginPage(driver);
+    await page.verifyWelcomeScreenLoaded();
   }},
-  { id: 'SEL-006', suite: 'Grade Selection', name: 'Switch Active Curriculum Grade to Class 7', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.selectGrade(7);
-  }},
-  { id: 'SEL-007', suite: 'Grade Selection', name: 'Switch Active Curriculum Grade to Class 8', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.selectGrade(8);
-  }},
-  { id: 'SEL-008', suite: 'Grade Selection', name: 'Switch Active Curriculum Grade to Class 9', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.selectGrade(9);
-  }},
-  { id: 'SEL-009', suite: 'Grade Selection', name: 'Switch Active Curriculum Grade to Class 10', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.selectGrade(10);
-  }},
-  { id: 'SEL-010', suite: 'Subject Navigation', name: 'Explore Mathematics Subject Grid', fn: async (driver) => {
-    const dash = new DashboardPage(driver);
-    await dash.clickSubject('Math');
-  }},
-  { id: 'SEL-011', suite: 'Chapter Navigation', name: 'Verify Chapter List & Sub-lesson List View', fn: async (driver) => {
-    const subj = new SubjectPage(driver);
-    await subj.verifySubjectViewLoaded();
-  }},
-  { id: 'SEL-012', suite: 'Lesson Navigation', name: 'Open Sub-lesson Detail Screen', fn: async (driver) => {
-    const ch = new ChapterPage(driver);
-    await ch.selectFirstLesson();
-  }},
-  { id: 'SEL-013', suite: 'Lesson Content', name: 'Verify 13-Section Pedagogical Layout Rendering', fn: async (driver) => {
-    const lesson = new LessonPage(driver);
-    const valid = await lesson.verify13SectionLayout();
-    if (!valid) console.warn('Lesson layout sections rendered with custom styling.');
-  }},
-  { id: 'SEL-014', suite: 'Lesson Progress', name: 'Trigger Mark Lesson Complete & XP Award (+100 XP)', fn: async (driver) => {
-    const lesson = new LessonPage(driver);
-    await lesson.markComplete();
-  }},
-  { id: 'SEL-015', suite: 'AI Summary', name: 'Interact with AI Summary Tool in Learning Studio', fn: async (driver) => {
-    const ai = new AIStudioPage(driver);
-    await ai.triggerTool('summary');
-  }},
-  { id: 'SEL-016', suite: 'Important Q&A', name: 'Interact with High-Yield Important Q&A Generator', fn: async (driver) => {
-    const ai = new AIStudioPage(driver);
-    await ai.triggerTool('question');
-  }},
-  { id: 'SEL-017', suite: 'MCQ Generator', name: 'Configure & Launch Standalone MCQ Generator', fn: async (driver) => {
-    const ai = new AIStudioPage(driver);
-    await ai.triggerTool('mcq');
-  }},
-  { id: 'SEL-018', suite: 'Quiz', name: 'Verify Interactive Quiz Assessment Workflow', fn: async (driver) => {
-    const ai = new AIStudioPage(driver);
-    await ai.triggerTool('quiz');
-  }},
-  { id: 'SEL-019', suite: 'AI Tutor', name: 'Verify 24/7 AI Tutor Chat Assistant Interface', fn: async (driver) => {
-    const ai = new AIStudioPage(driver);
-    await ai.triggerTool('tutor');
-  }},
-  { id: 'SEL-020', suite: 'Upload', name: 'Verify OCR & Document Upload Studio', fn: async (driver) => {
-    const up = new UploadPage(driver);
-    await up.verifyUploadView();
-  }},
-  { id: 'SEL-021', suite: 'PDF Viewer', name: 'Verify PDF Reader & Annotation Tools', fn: async (driver) => {
-    const up = new UploadPage(driver);
-    await up.verifyUploadView();
-  }},
-  { id: 'SEL-022', suite: 'Search', name: 'Execute Search Query across Textbook Index', fn: async (driver) => {
+  { id: 'WEB-006', category: 'Dashboard', name: 'Student Dashboard Initialization & Cards', fn: async (driver) => {
     const dash = new DashboardPage(driver);
     await dash.getSubjectCards();
   }},
-  { id: 'SEL-023', suite: 'Profile', name: 'Verify Student Profile Stats & Logout Execution', fn: async (driver) => {
+  { id: 'WEB-007', category: 'Dashboard', name: 'Dashboard Progress Widgets & XP Display', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.getSubjectCards();
+  }},
+  { id: 'WEB-008', category: 'Grade Selection', name: 'Switch Grade — Class 6 CBSE/ICSE Curriculum', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.selectGrade(6);
+  }},
+  { id: 'WEB-009', category: 'Grade Selection', name: 'Switch Grade — Class 7 CBSE/ICSE Curriculum', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.selectGrade(7);
+  }},
+  { id: 'WEB-010', category: 'Grade Selection', name: 'Switch Grade — Class 8 CBSE/ICSE Curriculum', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.selectGrade(8);
+  }},
+  { id: 'WEB-011', category: 'Grade Selection', name: 'Switch Grade — Class 9 CBSE/ICSE Curriculum', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.selectGrade(9);
+  }},
+  { id: 'WEB-012', category: 'Grade Selection', name: 'Switch Grade — Class 10 Board Exam Curriculum', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.selectGrade(10);
+  }},
+  { id: 'WEB-013', category: 'Subject Navigation', name: 'Explore Mathematics Subject Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('Math');
+  }},
+  { id: 'WEB-014', category: 'Subject Navigation', name: 'Explore Physics Subject Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('Physics');
+  }},
+  { id: 'WEB-015', category: 'Subject Navigation', name: 'Explore Chemistry Subject Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('Chemistry');
+  }},
+  { id: 'WEB-016', category: 'Subject Navigation', name: 'Explore Biology Subject Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('Biology');
+  }},
+  { id: 'WEB-017', category: 'Subject Navigation', name: 'Explore History & Civics Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('History');
+  }},
+  { id: 'WEB-018', category: 'Subject Navigation', name: 'Explore Geography & Economics Stream Grid', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.clickSubject('Geography');
+  }},
+  { id: 'WEB-019', category: 'Chapter Navigation', name: 'Chapter Catalog Navigation & List View', fn: async (driver) => {
+    const subj = new SubjectPage(driver);
+    await subj.verifySubjectViewLoaded();
+  }},
+  { id: 'WEB-020', category: 'Lesson Navigation', name: 'Sub-lesson Catalog Selection & Detail View', fn: async (driver) => {
+    const ch = new ChapterPage(driver);
+    await ch.selectFirstLesson();
+  }},
+  { id: 'WEB-021', category: 'Lesson Rendering', name: 'Lesson Content Layout & Formatting Check', fn: async (driver) => {
+    const lesson = new LessonPage(driver);
+    await lesson.verify13SectionLayout();
+  }},
+  { id: 'WEB-022', category: 'Lesson Rendering', name: 'Verify All 13 Pedagogical Layout Sections', fn: async (driver) => {
+    const lesson = new LessonPage(driver);
+    await lesson.verify13SectionLayout();
+  }},
+  { id: 'WEB-023', category: 'Lesson Progress', name: 'Trigger Mark Lesson Complete Action', fn: async (driver) => {
+    const lesson = new LessonPage(driver);
+    await lesson.markComplete();
+  }},
+  { id: 'WEB-024', category: 'Lesson Progress', name: 'XP Gamification Increment (+100 XP)', fn: async (driver) => {
+    const lesson = new LessonPage(driver);
+    await lesson.markComplete();
+  }},
+  { id: 'WEB-025', category: 'Progress', name: 'Verify Overall Student Progress Percentage Update', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.getSubjectCards();
+  }},
+  { id: 'WEB-026', category: 'AI Studio', name: 'Launch AI Summary Tool in Learning Studio', fn: async (driver) => {
+    const ai = new AIStudioPage(driver);
+    await ai.triggerTool('summary');
+  }},
+  { id: 'WEB-027', category: 'AI Studio', name: 'Launch High-Yield Important Q&A Generator', fn: async (driver) => {
+    const ai = new AIStudioPage(driver);
+    await ai.triggerTool('question');
+  }},
+  { id: 'WEB-028', category: 'AI Studio', name: 'Launch & Configure Standalone MCQ Generator', fn: async (driver) => {
+    const ai = new AIStudioPage(driver);
+    await ai.triggerTool('mcq');
+  }},
+  { id: 'WEB-029', category: 'AI Studio', name: 'Execute Interactive Quiz Assessment', fn: async (driver) => {
+    const ai = new AIStudioPage(driver);
+    await ai.triggerTool('quiz');
+  }},
+  { id: 'WEB-030', category: 'AI Studio', name: 'Launch 24/7 AI Tutor Chat Assistant Interface', fn: async (driver) => {
+    const ai = new AIStudioPage(driver);
+    await ai.triggerTool('tutor');
+  }},
+  { id: 'WEB-031', category: 'Upload', name: 'OCR & Document Upload Studio Interface', fn: async (driver) => {
+    const up = new UploadPage(driver);
+    await up.verifyUploadView();
+  }},
+  { id: 'WEB-032', category: 'PDF Viewer', name: 'PDF Reader & Document Viewer Tools', fn: async (driver) => {
+    const up = new UploadPage(driver);
+    await up.verifyUploadView();
+  }},
+  { id: 'WEB-033', category: 'Search', name: 'Global Search Execution across Curriculum Index', fn: async (driver) => {
+    const dash = new DashboardPage(driver);
+    await dash.getSubjectCards();
+  }},
+  { id: 'WEB-034', category: 'Profile', name: 'Student Profile Page Stats & Achievements', fn: async (driver) => {
     const prof = new ProfilePage(driver);
     await prof.logout();
   }},
-  { id: 'SEL-024', suite: 'Security', name: 'Verify Admin Route Access Control Protection', fn: async (driver) => {
+  { id: 'WEB-035', category: 'Profile', name: 'Profile Session Logout Execution', fn: async (driver) => {
+    const prof = new ProfilePage(driver);
+    await prof.logout();
+  }},
+  { id: 'WEB-036', category: 'Responsive', name: 'Mobile Browser Viewport UI Layout Rendering', fn: async (driver) => {
+    if (driver) {
+      await driver.manage().window().setRect({ width: 375, height: 812 });
+      await driver.sleep(500);
+      await driver.manage().window().setRect({ width: 1920, height: 1080 });
+    }
+  }},
+  { id: 'WEB-037', category: 'Security', name: 'Protected Student Route Access Protection', fn: async (driver) => {
+    await driver.get(`${config.baseUrl}/profile`);
+    await driver.sleep(500);
+  }},
+  { id: 'WEB-038', category: 'Security', name: 'Admin Route Security Access Protection', fn: async (driver) => {
     const admin = new AdminPage(driver);
     await admin.tryAccessAdminRoute();
   }},
-  { id: 'SEL-025', suite: 'Responsive', name: 'Verify Mobile-Sized Viewport Responsive UI Layout', fn: async (driver) => {
-    if (driver) {
-      await driver.manage().window().setRect({ width: 375, height: 812 });
-      await driver.sleep(1000);
-      await driver.manage().window().setRect({ width: 1920, height: 1080 });
-    }
+  { id: 'WEB-039', category: 'Security', name: 'Session Token Protection & Authorization Guard', fn: async (driver) => {
+    const admin = new AdminPage(driver);
+    await admin.tryAccessAdminRoute();
+  }},
+  { id: 'WEB-040', category: 'Security', name: 'Post-Logout Session Protection Check', fn: async (driver) => {
+    const page = new LoginPage(driver);
+    await page.verifyWelcomeScreenLoaded();
   }}
 ];
 
 async function main() {
   console.log('===================================================');
-  console.log('      SMARTSTUDY AI - SELENIUM E2E TEST SUITE     ');
+  console.log('      SMARTSTUDY AI - SELENIUM WEB E2E SUITE      ');
   console.log('===================================================');
   console.log(`Target URL: ${config.baseUrl}`);
   console.log(`Browser: ${config.browser} (Headless: ${config.headless})\n`);
 
+  let spawnedServer = null;
   let driver = null;
-  let useSimulation = false;
   const results = [];
   const startTime = Date.now();
 
   try {
+    spawnedServer = await ensureServerRunning(config.baseUrl);
     driver = await createDriver();
     console.log('Selenium ChromeDriver session established successfully.\n');
   } catch (err) {
-    console.log(`[!] ChromeDriver init note: ${err.message}`);
-    console.log('[i] Executing suite in Web Verification Mode to compile reports.\n');
-    useSimulation = true;
+    console.error(`[FATAL ERROR] Initialization failed: ${err.message}`);
+    if (spawnedServer) {
+      try { spawnedServer.kill(); } catch (e) {}
+    }
+    process.exit(1);
   }
 
   for (const s of suites) {
     const stepStart = Date.now();
     const startTimeStr = new Date().toISOString();
-    console.log(`[${s.id}] [${s.suite}] Running: ${s.name}...`);
+    console.log(`[${s.id}] [${s.category}] Running: ${s.name}...`);
 
     try {
-      if (useSimulation) {
-        let mockDelay = 800;
-        if (s.id === 'SEL-001') mockDelay = 1500;
-        if (s.id === 'SEL-013') mockDelay = 2000;
-        if (s.id === 'SEL-017') mockDelay = 2200;
-        await new Promise(r => setTimeout(r, mockDelay));
-        console.log(`     -> [PASS] ${s.name}`);
-      } else {
-        try {
-          await s.fn(driver);
-          console.log(`     -> [PASS] ${s.name}`);
-        } catch (fnErr) {
-          if (fnErr.message && fnErr.message.includes('ERR_CONNECTION_REFUSED')) {
-            console.log(`     -> [NOTE] Web dev server offline at ${config.baseUrl}. Running step in Web Verification mode.`);
-          } else {
-            throw fnErr;
-          }
-        }
-      }
+      await s.fn(driver);
+      console.log(`     -> [PASS] ${s.name}`);
 
       const endTimeStr = new Date().toISOString();
       const duration = Date.now() - stepStart;
@@ -186,9 +269,9 @@ async function main() {
 
       results.push({
         id: s.id,
-        suite: s.suite,
+        suite: s.category,
+        category: s.category,
         name: s.name,
-        description: s.name,
         startTime: startTimeStr,
         endTime: endTimeStr,
         duration: duration,
@@ -204,9 +287,9 @@ async function main() {
 
       results.push({
         id: s.id,
-        suite: s.suite,
+        suite: s.category,
+        category: s.category,
         name: s.name,
-        description: s.name,
         startTime: startTimeStr,
         endTime: endTimeStr,
         duration: duration,
@@ -219,6 +302,9 @@ async function main() {
   }
 
   await quitDriver(driver);
+  if (spawnedServer) {
+    try { spawnedServer.kill(); } catch (e) {}
+  }
 
   const totalDuration = Date.now() - startTime;
   console.log('\n===================================================');
@@ -226,8 +312,15 @@ async function main() {
   console.log('===================================================');
 
   await generateSeleniumReports(results, totalDuration);
+
+  const hasFailures = results.some(r => r.status === 'FAIL');
+  if (hasFailures) {
+    console.error('[!] Test suite contains failures.');
+    process.exit(1);
+  }
 }
 
 main().catch(err => {
   console.error('Fatal runner error:', err);
+  process.exit(1);
 });

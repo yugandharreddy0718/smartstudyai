@@ -25,6 +25,11 @@ test-results/
 screenshots/
 reports/
 Test Results/
+selenium-tests/excel/
+selenium-tests/reports/
+selenium-tests/screenshots/
+selenium-tests/logs/
+
 
 # Android & Capacitor Build Output
 android/app/build/

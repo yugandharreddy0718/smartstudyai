@@ -1,66 +1,79 @@
-# SmartStudy AI — Selenium Web E2E Testing Framework
+# SmartStudy AI — Standalone Selenium Web Application E2E Framework
 
-This isolated directory (`selenium-tests/`) contains the complete enterprise Selenium Web End-to-End Automation Suite for the SmartStudy AI web application.
+This isolated directory (`selenium-tests/`) contains the complete **Selenium Web Application E2E Automation Framework** for SmartStudy AI.
 
-## Directory Layout
+---
 
-```
+## 📁 Directory Structure
+
+```text
 selenium-tests/
+├── tests/
+│   ├── authentication/
+│   │   └── auth.test.js            # Auth & Registration Specs
+│   ├── dashboard/
+│   │   └── dashboard.test.js       # Dashboard & Grade Selector Specs
+│   ├── curriculum/
+│   │   └── curriculum.test.js      # Classes 6-10 & Subject Stream Specs
+│   ├── lessons/
+│   │   └── lessons.test.js         # 13 Pedagogical Layout & Progress Specs
+│   ├── ai-studio/
+│   │   └── aiStudio.test.js        # Summary, Q&A, MCQ, Quiz, Tutor Specs
+│   ├── progress/
+│   │   └── progress.test.js        # XP & Progress Tracker Specs
+│   ├── profile/
+│   │   └── profile.test.js         # Profile & Logout Specs
+│   ├── search/
+│   │   └── search.test.js          # Search Specs
+│   └── security/
+│       └── security.test.js        # Route & Role Protection Specs
 ├── config/
-│   └── test.config.js              # Central Test Configuration & Environment Settings
+│   └── test.config.js              # Environment & Chrome Headless Settings
 ├── drivers/
-│   └── driver.js                   # Selenium WebDriver Builder & Chrome Headless Options
+│   └── driver.js                   # Selenium WebDriver Manager
 ├── pages/
-│   ├── LoginPage.js                # POM for Welcome & Login Screen
-│   ├── RegisterPage.js             # POM for User Registration
-│   ├── DashboardPage.js            # POM for Student Dashboard & Grade Selector
+│   ├── LoginPage.js                # POM for Login & Welcome
+│   ├── RegisterPage.js             # POM for Registration
+│   ├── DashboardPage.js            # POM for Dashboard & Grade Selector
 │   ├── SubjectPage.js              # POM for Subject Grid
-│   ├── ChapterPage.js              # POM for Chapter & Sub-Lesson Exploration
-│   ├── LessonPage.js               # POM for 13-Section Pedagogical Layout & Mark Complete
-│   ├── AIStudioPage.js             # POM for AI Summary, Q&A, MCQ Generator, Quiz & AI Tutor
-│   ├── UploadPage.js               # POM for Document Upload & PDF Reader
-│   ├── ProfilePage.js              # POM for Student Profile & Session Logout
-│   └── AdminPage.js                # POM for Route Protection Verification
+│   ├── ChapterPage.js              # POM for Chapter Catalog
+│   ├── LessonPage.js               # POM for 13-Section Layout & XP
+│   ├── AIStudioPage.js             # POM for AI Tools
+│   ├── UploadPage.js               # POM for Upload & PDF Viewer
+│   ├── ProfilePage.js              # POM for Profile & Logout
+│   └── AdminPage.js                # POM for Admin Route Security
 ├── reports/
-│   ├── screenshots/                # Captured Checkpoint Screenshots
-│   ├── selenium-report.xlsx        # Excel Analysis Report (Summary & Details Sheets)
-│   └── selenium-report.html        # Interactive HTML Executive Dashboard
-├── utils/
-│   ├── testData.js                 # Data-Driven Payload Generator
-│   ├── screenshots.js              # Screenshot Helper Utility
-│   └── excelReporter.js            # ExcelJS & HTML Report Compilation Engine
-├── runner.js                       # Master Suite Test Runner
-├── package.json                    # Standalone Test Dependencies
-└── README.md                       # Execution Documentation
+│   ├── index.html                  # Executive HTML Dashboard
+│   └── selenium-report.html
+├── excel/
+│   └── selenium-report.xlsx        # 3-Sheet Excel Analysis Report
+├── screenshots/                    # Failure Image Captures
+├── logs/                           # Summary Execution Logs
+├── runner.js                       # Master Runner (40 E2E Web Tests)
+├── package.json                    # Standalone Dependencies
+└── README.md                       # Documentation
 ```
 
-## Test Suite Coverage (18 Functional Modules)
+---
 
-1. **Authentication**: Welcome screen UI, Registration options, Protected route redirects
-2. **Dashboard**: Subject cards grid rendering
-3. **Grade Selection**: Parameterized verification across Class 6, Class 7, Class 8, Class 9, Class 10
-4. **Subject Navigation**: Mathematics & Core subjects exploration
-5. **Chapter Navigation**: Chapter & sub-lesson catalog navigation
-6. **Lesson Navigation**: Sub-lesson detail view opening
-7. **Lesson Content**: 13-Section pedagogical layout content check
-8. **Lesson Progress**: Mark complete action & +100 XP award tracking
-9. **AI Summary**: AI summary generation interface
-10. **Important Q&A**: High-yield exam Q&A generator
-11. **MCQ Generator**: Standalone MCQ quiz builder
-12. **Quiz**: Interactive quiz assessment interface
-13. **AI Tutor**: 24/7 AI Tutor chat interface
-14. **Upload**: OCR document upload studio
-15. **PDF Viewer**: PDF reader & annotation tools
-16. **Search**: Index search query execution
-17. **Profile**: Student stats overview & logout execution
-18. **Security**: Admin route access control protection
+## 🚀 Execution Commands
 
-## Execution Instructions
+Run the full Selenium Web E2E Suite from the root directory:
 
 ```bash
-# Execute Complete Selenium Web E2E Suite & Generate Reports
+# Main Web E2E Test Execution
 npm run test:selenium
 
-# Generate / View Selenium Reports
+# View Reports Info
 npm run report:selenium
 ```
+
+---
+
+## 📊 Deliverables & Output Paths
+
+After suite execution, report artifacts are saved in:
+- **Excel Analysis (3 Worksheets):** `selenium-tests/excel/selenium-report.xlsx` & `Test Results/Web/excel/selenium-report.xlsx`
+- **Interactive HTML Dashboard:** `selenium-tests/reports/index.html` & `Test Results/Web/reports/latest/index.html`
+- **Screenshots:** `selenium-tests/screenshots/` & `Test Results/Web/screenshots/`
+- **Execution Summary Log:** `selenium-tests/logs/summary.md` & `Test Results/Web/logs/summary.md`

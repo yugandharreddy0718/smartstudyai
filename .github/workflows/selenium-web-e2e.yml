@@ -1,0 +1,152 @@
+name: Selenium Web E2E Automation & CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  selenium-web-pipeline:
+    name: Selenium Web E2E Pipeline (40 Test Cases)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Stage 1: Checkout Repository
+      - name: Stage 1 - Checkout Repository
+        uses: actions/checkout@v4
+
+      # Stage 2: Setup Node.js 20.x
+      - name: Stage 2 - Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      # Stage 3: Setup Standardized Web Report Directories
+      - name: Stage 3 - Setup Standardized Web Report Directories
+        run: |
+          mkdir -p "Test Results/Web/reports/latest"
+          mkdir -p "Test Results/Web/excel"
+          mkdir -p "Test Results/Web/screenshots"
+          mkdir -p "Test Results/Web/logs"
+          mkdir -p "Test Results/Web/Summary"
+          npm install --legacy-peer-deps
+
+      # Stage 4: Build Web & Backend Applications
+      - name: Stage 4 - Build Application Workspaces
+        run: |
+          npm run build:web
+          npm run build:backend
+
+      # Stage 5: Start Local Web Application Server & Verify Readiness
+      - name: Stage 5 - Start Web Server & Verify Readiness
+        run: |
+          npm run dev:web &
+          npx wait-on http://localhost:5173 -t 30000
+          curl -I http://localhost:5173 || exit 1
+
+      # Stage 6: Execute Selenium Web E2E Test Suite
+      - name: Stage 6 - Execute Selenium Web E2E Test Suite
+        env:
+          BASE_URL: http://localhost:5173
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          node selenium-tests/runner.js
+
+      # Stage 7: Upload Test Deliverables & Artifacts (30 Days Retention)
+      - name: Stage 7 - Upload Web QA Deliverables & Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SmartStudy-Web-Selenium-QA-Deliverables-Build-${{ github.run_number }}
+          path: Test Results/Web/
+          retention-days: 30
+
+      # Stage 8: Validate Generated Web Reports & Directory Structures
+      - name: Stage 8 - Validate Generated Web Reports & Print Paths
+        run: |
+          echo "==================================================="
+          echo "    VALIDATING GENERATED WEB REPORTS DIRECTORY    "
+          echo "==================================================="
+          
+          if [ ! -d "Test Results/Web" ]; then
+            echo "[ERROR] Standardized directory 'Test Results/Web' does not exist!"
+            exit 1
+          fi
+
+          if [ ! -d "Test Results/Web/reports/latest" ]; then
+            echo "[ERROR] Directory 'Test Results/Web/reports/latest' does not exist!"
+            exit 1
+          fi
+
+          if [ ! -d "Test Results/Web/excel" ]; then
+            echo "[ERROR] Directory 'Test Results/Web/excel' does not exist!"
+            exit 1
+          fi
+
+          if [ ! -d "Test Results/Web/screenshots" ]; then
+            echo "[ERROR] Directory 'Test Results/Web/screenshots' does not exist!"
+            exit 1
+          fi
+
+          if [ ! -d "Test Results/Web/logs" ]; then
+            echo "[ERROR] Directory 'Test Results/Web/logs' does not exist!"
+            exit 1
+          fi
+
+          if [ ! -f "Test Results/Web/reports/latest/index.html" ]; then
+            echo "[ERROR] HTML Report file missing: Test Results/Web/reports/latest/index.html"
+            exit 1
+          fi
+
+          if [ ! -f "Test Results/Web/excel/selenium-report.xlsx" ]; then
+            echo "[ERROR] Excel Report file missing: Test Results/Web/excel/selenium-report.xlsx"
+            exit 1
+          fi
+
+          echo "✅ Directory Contents (Test Results/Web):"
+          ls -la "Test Results/Web"
+          echo "✅ Verified HTML Report:"
+          ls -la "Test Results/Web/reports/latest/index.html"
+          echo "✅ Verified Excel Report:"
+          ls -la "Test Results/Web/excel/selenium-report.xlsx"
+
+      # Stage 9: Publish Web Reports to GitHub Pages
+      - name: Stage 9 - Publish Web Reports to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: always()
+        continue-on-error: true
+        with:
+          folder: Test Results/Web
+          target-folder: reports/web
+          branch: gh-pages
+          clean: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Stage 10: Publish GitHub Action Summary
+      - name: Stage 10 - Publish GitHub Action Summary
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            try {
+              const summaryPath = path.resolve('Test Results/Web/Summary/summary.md');
+              if (fs.existsSync(summaryPath)) {
+                const summaryContent = fs.readFileSync(summaryPath, 'utf8');
+                core.summary.addRaw(summaryContent).write();
+              } else {
+                core.summary.addRaw("## Selenium Web E2E Automation Summary\n\nExecution completed successfully.").write();
+              }
+            } catch (e) {
+              console.log('Failed to append job summary: ' + e.message);
+            }
