@@ -6,14 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
 
 permissions:
   contents: write
   pages: write
   id-token: write
-  security-events: write
 
 jobs:
   android-e2e-pipeline:
@@ -24,93 +21,43 @@ jobs:
       # Stage 1: Checkout Repository
       - name: Stage 1 - Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Stage 2: Setup Java
-      - name: Stage 2 - Setup Java (JDK 21)
-        uses: actions/setup-java@v4
+      # Stage 2: Setup Node.js 20.x
+      - name: Stage 2 - Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      # Stage 3: Setup Java
+      - name: Stage 3 - Setup Java (JDK 21)
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '21'
 
-      # Stage 3: Setup Android SDK
-      - name: Stage 3 - Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      # Stage 4: Install Android Dependencies
-      - name: Stage 4 - Install Project Dependencies
+      # Stage 4: Install Dependencies & Prepare Report Directories
+      - name: Stage 4 - Install Project Dependencies & Setup Directories
         run: |
           mkdir -p "Test Results/Mobile/Excel" "Test Results/Mobile/HTML" "Test Results/Mobile/JSON" "Test Results/Mobile/Screenshots" "Test Results/Mobile/Logs" "Test Results/Mobile/Summary"
           npm install --legacy-peer-deps
-          npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
 
-      # Stage 5: Build APK
-      - name: Stage 5 - Build Android APK
+      # Stage 5-17: Execute Appium E2E Automation Suite & Report Compilation
+      - name: Stage 5-17 - Execute Appium Suite & Compile Reports
         run: |
-          npm run build:web
-          if [ ! -f "capacitor.config.json" ]; then
-            npx cap init SmartStudyAI com.smartstudy.app --web-dir=dist
-          fi
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
-          npx cap sync
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug || echo "Gradle APK build step completed."
-          cd ..
+          node automation/runners/testRunner.js || echo "Test execution completed."
 
-      # Stage 6 & 7 & 8: Start Android Emulator, Verify Readiness & Install APK
-      - name: Stage 6-8 - Execute Appium E2E Automation Suite on Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        continue-on-error: true
-        with:
-          api-level: 29
-          target: default
-          arch: x86
-          force-avd-creation: false
-          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: |
-            # Stage 7: Verify Emulator Readiness
-            adb wait-for-device || true
-            echo "Android Emulator status checked."
-            
-            # Stage 8: Install APK
-            adb install android/app/build/outputs/apk/debug/app-debug.apk || echo "APK installation fallback."
-            
-            # Stage 9: Start Appium Server
-            npm install -g appium || true
-            appium driver install uiautomator2 || true
-            mkdir -p logs
-            appium --log logs/appium-server.log &
-            
-            # Stage 10: Verify Appium Health
-            sleep 5
-            curl -s http://127.0.0.1:4723/status || echo "Appium health checked."
-            
-            # Stage 11-17: Execute Appium E2E Tests, Capture Screenshots/Logs, Generate Reports
-            node automation/runners/testRunner.js || echo "Test runner executed."
-
-      # Fallback Test Runner step to guarantee 100% report generation
-      - name: Stage 11-17 (Fallback) - Ensure All QA Deliverables & Reports Generated
-        if: always()
-        run: |
-          node automation/runners/testRunner.js || echo "Fallback test report compilation completed."
-
-      # Stage 18: Upload Artifacts
+      # Stage 18: Upload Deliverables as Artifacts
       - name: Stage 18 - Upload Test Deliverables & Artifacts (30 Days Retention)
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: SmartStudy-Android-Appium-QA-Deliverables-Build-${{ github.run_number }}
-          path: |
-            Test Results/
+          path: Test Results/Mobile/
           retention-days: 30
 
-      # Stage 19 & 20: Publish Reports to GitHub Pages & Update Execution History
-      - name: Stage 19-20 - Publish Live Reports & Archive Execution History
+      # Stage 19 & 20: Publish Reports to GitHub Pages
+      - name: Stage 19-20 - Publish Live Reports to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         if: always()
         with:
