@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartStudy AI - Historical Trends</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 3rem; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 2.5rem; border-radius: 1.8rem; box-shadow: 0 10px 40px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; }
+    h2 { font-size: 1.5rem; margin-bottom: 2rem; color: #0f172a; }
+    .chart { display: flex; align-items: flex-end; justify-content: space-around; height: 200px; padding: 1rem 0; border-bottom: 2px solid #e2e8f0; }
+    .bar-wrapper { text-align: center; width: 80px; }
+    .bar { background: #94a3b8; border-radius: 0.5rem 0.5rem 0 0; }
+    .bar.current { background: #16a34a; }
+    .label { margin-top: 0.8rem; font-size: 0.8rem; font-weight: 700; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Historical Build Stability</h2>
+    <div class="chart">
+      <div class="bar-wrapper">
+        <div class="bar" style="height: 140px;"></div>
+        <div class="label">Build 001 (70%)</div>
+      </div>
+      <div class="bar-wrapper">
+        <div class="bar" style="height: 160px;"></div>
+        <div class="label">Build 002 (80%)</div>
+      </div>
+      <div class="bar-wrapper">
+        <div class="bar current" style="height: 196.07843137254903px;"></div>
+        <div class="label">Current (98.0%)</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
