@@ -1,38 +1,66 @@
-# SmartStudy AI — Selenium Web E2E Automation Test Suite
+# SmartStudy AI — Selenium Web E2E Testing Framework
 
-This directory (`selenium-tests/`) contains the complete Node.js Selenium Web End-to-End Automation Suite for the SmartStudy AI Web Application.
+This isolated directory (`selenium-tests/`) contains the complete enterprise Selenium Web End-to-End Automation Suite for the SmartStudy AI web application.
 
-## Test Workflow Coverage
+## Directory Layout
 
-1. **WS-001**: Launch Web Application & Verify Title
-2. **WS-002**: Authentication & Welcome Screen UI Verification
-3. **WS-003**: Student Profile & Grade Selection (Classes 6–10)
-4. **WS-004**: Subject Grid & Navigation (6 Core Subjects)
-5. **WS-005**: Chapter List & Sub-Lesson Exploration
-6. **WS-006**: 13-Section Pedagogical Lesson Content Verification
-7. **WS-007**: Learning Studio & AI Tools (Summary, Q&A, MCQ Generator, Quiz, AI Tutor)
-8. **WS-008**: Mark Lesson Complete & XP / Progress Tracking (+100 XP)
-9. **WS-009**: Profile View & Session Logout Execution
+```
+selenium-tests/
+├── config/
+│   └── test.config.js              # Central Test Configuration & Environment Settings
+├── drivers/
+│   └── driver.js                   # Selenium WebDriver Builder & Chrome Headless Options
+├── pages/
+│   ├── LoginPage.js                # POM for Welcome & Login Screen
+│   ├── RegisterPage.js             # POM for User Registration
+│   ├── DashboardPage.js            # POM for Student Dashboard & Grade Selector
+│   ├── SubjectPage.js              # POM for Subject Grid
+│   ├── ChapterPage.js              # POM for Chapter & Sub-Lesson Exploration
+│   ├── LessonPage.js               # POM for 13-Section Pedagogical Layout & Mark Complete
+│   ├── AIStudioPage.js             # POM for AI Summary, Q&A, MCQ Generator, Quiz & AI Tutor
+│   ├── UploadPage.js               # POM for Document Upload & PDF Reader
+│   ├── ProfilePage.js              # POM for Student Profile & Session Logout
+│   └── AdminPage.js                # POM for Route Protection Verification
+├── reports/
+│   ├── screenshots/                # Captured Checkpoint Screenshots
+│   ├── selenium-report.xlsx        # Excel Analysis Report (Summary & Details Sheets)
+│   └── selenium-report.html        # Interactive HTML Executive Dashboard
+├── utils/
+│   ├── testData.js                 # Data-Driven Payload Generator
+│   ├── screenshots.js              # Screenshot Helper Utility
+│   └── excelReporter.js            # ExcelJS & HTML Report Compilation Engine
+├── runner.js                       # Master Suite Test Runner
+├── package.json                    # Standalone Test Dependencies
+└── README.md                       # Execution Documentation
+```
 
-## Generated Excel Analysis Report
+## Test Suite Coverage (18 Functional Modules)
 
-The runner automatically generates a formatted Excel report (`selenium-test-report.xlsx`) containing:
-- **Title Banner**: Styled header block
-- **Metadata Cards**: Execution date, target URL, and execution mode
-- **Summary Cards**: Total Steps, Passed, Failed, Success Rate %, Total Duration
-- **Detailed Results Table**: Step ID, Name, Status (PASS green / FAIL red), Duration (ms), Timestamp, Details
-
-Reports are saved to:
-- `selenium-tests/selenium-test-report.xlsx`
-- `Test Results/Web/selenium-test-report.xlsx`
-- `Test Results/Excel/selenium-test-report.xlsx`
+1. **Authentication**: Welcome screen UI, Registration options, Protected route redirects
+2. **Dashboard**: Subject cards grid rendering
+3. **Grade Selection**: Parameterized verification across Class 6, Class 7, Class 8, Class 9, Class 10
+4. **Subject Navigation**: Mathematics & Core subjects exploration
+5. **Chapter Navigation**: Chapter & sub-lesson catalog navigation
+6. **Lesson Navigation**: Sub-lesson detail view opening
+7. **Lesson Content**: 13-Section pedagogical layout content check
+8. **Lesson Progress**: Mark complete action & +100 XP award tracking
+9. **AI Summary**: AI summary generation interface
+10. **Important Q&A**: High-yield exam Q&A generator
+11. **MCQ Generator**: Standalone MCQ quiz builder
+12. **Quiz**: Interactive quiz assessment interface
+13. **AI Tutor**: 24/7 AI Tutor chat interface
+14. **Upload**: OCR document upload studio
+15. **PDF Viewer**: PDF reader & annotation tools
+16. **Search**: Index search query execution
+17. **Profile**: Student stats overview & logout execution
+18. **Security**: Admin route access control protection
 
 ## Execution Instructions
 
 ```bash
-# Navigate to the selenium-tests directory
-cd selenium-tests
+# Execute Complete Selenium Web E2E Suite & Generate Reports
+npm run test:selenium
 
-# Run Selenium E2E Web Test Suite & Generate Excel Report
-node run-tests.js
+# Generate / View Selenium Reports
+npm run report:selenium
 ```
