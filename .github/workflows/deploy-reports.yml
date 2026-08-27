@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Stage 1 - Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Stage 2 & 3 - Download E2E Report Artifacts & Print Diagnostic Locations
         uses: actions/github-script@v7

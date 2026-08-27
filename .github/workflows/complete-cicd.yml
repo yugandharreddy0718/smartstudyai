@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Stage 1 - Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Stage 2 - Setup Node.js 20.x
         uses: actions/setup-node@v4
