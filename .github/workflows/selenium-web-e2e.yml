@@ -133,7 +133,7 @@ jobs:
 
       # Stage 10: Publish GitHub Action Summary
       - name: Stage 10 - Publish GitHub Action Summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         if: always()
         with:
           script: |
