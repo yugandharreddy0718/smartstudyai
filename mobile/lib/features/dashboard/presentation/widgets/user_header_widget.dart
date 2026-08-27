@@ -22,23 +22,28 @@ class UserHeaderWidget extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hello,',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ).animate().fade().slideX(begin: -0.1),
-              Text(
-                displayName,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ).animate().fade().slideX(begin: -0.1, delay: 100.ms),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello,',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ).animate().fade().slideX(begin: -0.1),
+                Text(
+                  displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ).animate().fade().slideX(begin: -0.1, delay: 100.ms),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           CircleAvatar(
             radius: 25,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,

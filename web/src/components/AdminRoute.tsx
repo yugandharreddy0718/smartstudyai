@@ -18,8 +18,11 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  const role = (profile?.role || 'student').trim().toLowerCase();
-  if (role !== 'admin' && role !== 'superadmin') {
+  const roleRaw = profile?.role || 'student';
+  const normalizedRole = String(roleRaw).trim().toLowerCase();
+  const isAllowed = normalizedRole === 'admin' || normalizedRole === 'superadmin';
+
+  if (!isAllowed) {
     console.warn(`[Access Denied] User ${user.uid} with role '${profile?.role}' attempted to access Admin Panel.`);
     return <Navigate to="/" replace />;
   }

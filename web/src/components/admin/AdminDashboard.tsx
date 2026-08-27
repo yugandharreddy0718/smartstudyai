@@ -5,6 +5,11 @@ import { fetchAdminStats, AdminStats } from '../../services/adminService';
 import SubjectManagement from './SubjectManagement';
 import ChapterManagement from './ChapterManagement';
 import BookManagement from './BookManagement';
+import StudentManagement from './StudentManagement';
+import LessonManagement from './LessonManagement';
+import RoleManagement from './RoleManagement';
+import AdminAnalytics from './AdminAnalytics';
+import CurriculumValidator from './CurriculumValidator';
 import {
   LayoutDashboard,
   Users,
@@ -26,7 +31,11 @@ import {
   ShieldAlert,
   Layers,
   ArrowRight,
-  Activity
+  Activity,
+  Menu,
+  X,
+  UserCheck,
+  CheckCircle2
 } from 'lucide-react';
 
 interface NavItem {
@@ -38,15 +47,15 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'students', label: 'Students', icon: Users },
   { id: 'users', label: 'Users', icon: Users, badge: 'Phase 4' },
-  { id: 'books', label: 'Books', icon: BookMarked },
+  { id: 'lessons', label: 'Lessons', icon: FileText },
   { id: 'subjects', label: 'Subjects', icon: BookOpen },
   { id: 'chapters', label: 'Chapters', icon: FolderTree },
-  { id: 'lessons', label: 'Lessons', icon: FileText, badge: 'Phase 4' },
-  { id: 'quizzes', label: 'Quizzes', icon: HelpCircle, badge: 'Phase 4' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, badge: 'Phase 4' },
-  { id: 'audit', label: 'Audit Logs', icon: ShieldCheck, badge: 'Phase 4' },
-  { id: 'settings', label: 'Settings', icon: Settings, badge: 'Phase 4' },
+  { id: 'books', label: 'Books', icon: BookMarked },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'roles', label: 'Roles', icon: UserCheck, badge: 'SuperAdmin' },
+  { id: 'validation', label: 'Validation', icon: CheckCircle2 }
 ];
 
 export default function AdminDashboard() {
@@ -55,6 +64,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const role = profile?.role || 'admin';
   const isSuper = role === 'superAdmin';
@@ -91,18 +101,35 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
+      {/* Mobile Header Bar */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-display font-bold text-base text-white">SmartStudy Admin</span>
+        </div>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800"
+          aria-label="Toggle mobile admin menu"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
       {/* Admin Sidebar */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+      <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 z-40`}>
         <div>
           {/* Logo Brand */}
-          <div className="p-6 border-b border-slate-800/80 flex items-center gap-3">
+          <div className="p-6 border-b border-slate-800/80 hidden md:flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="font-display font-bold text-lg text-white leading-tight">SmartStudy AI</h1>
-              <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin Dashboard</span>
+              <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin Panel</span>
             </div>
           </div>
 
@@ -114,7 +141,10 @@ export default function AdminDashboard() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setMobileMenuOpen(false);
+                  }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
                     isActive
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
@@ -126,7 +156,7 @@ export default function AdminDashboard() {
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/60">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30">
                       {item.badge}
                     </span>
                   )}
@@ -164,7 +194,7 @@ export default function AdminDashboard() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Admin Header */}
-        <header className="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-8 flex items-center justify-between shrink-0">
+        <header className="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 sm:px-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span className="font-semibold text-indigo-400">SmartStudy AI Admin</span>
             <ChevronRight className="w-4 h-4 text-slate-600" />
@@ -185,7 +215,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* Dynamic Tab Body */}
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
           {activeTab === 'dashboard' ? (
             <div className="space-y-8 max-w-6xl">
               {/* Header Title Bar */}
@@ -340,8 +370,8 @@ export default function AdminDashboard() {
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-200">Total Curriculum Items</h4>
-                    <p className="text-xs text-slate-400">Combined count of all subjects, chapters, and lessons registered in Firestore.</p>
+                    <h4 className="text-sm font-bold text-slate-200">Total Curriculum Baseline</h4>
+                    <p className="text-xs text-slate-400">Classes 6–10 • 178 Chapters • 444 Lessons across 6 Subject Streams.</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -353,14 +383,14 @@ export default function AdminDashboard() {
 
               {/* Quick Actions Section */}
               <div className="space-y-4">
-                <h3 className="font-display font-bold text-lg text-white">Quick Actions</h3>
+                <h3 className="font-display font-bold text-lg text-white">Quick Administrative Actions</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                   {[
-                    { label: 'Manage Books', icon: BookMarked, tab: 'books' },
-                    { label: 'Manage Subjects', icon: BookOpen, tab: 'subjects' },
-                    { label: 'Manage Chapters', icon: FolderTree, tab: 'chapters' },
+                    { label: 'Manage Students', icon: Users, tab: 'students' },
                     { label: 'Manage Lessons', icon: FileText, tab: 'lessons' },
-                    { label: 'Manage Quizzes', icon: HelpCircle, tab: 'quizzes' },
+                    { label: 'Manage Subjects', icon: BookOpen, tab: 'subjects' },
+                    { label: 'Manage Books', icon: BookMarked, tab: 'books' },
+                    { label: 'Run Validator', icon: CheckCircle2, tab: 'validation' },
                   ].map((action) => {
                     const ActionIcon = action.icon;
                     return (
@@ -381,27 +411,23 @@ export default function AdminDashboard() {
                   })}
                 </div>
               </div>
-
-              {/* Recent Activity Section */}
-              <div className="space-y-4">
-                <h3 className="font-display font-bold text-lg text-white">Recent Activity</h3>
-                <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 text-center flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-400 mb-3">
-                    <Activity className="w-6 h-6" />
-                  </div>
-                  <h4 className="font-bold text-sm text-slate-300">No Recent Activity</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mt-1">
-                    System activity logging will be activated in Phase 4. Recent administrative actions, content updates, and user events will be logged here.
-                  </p>
-                </div>
-              </div>
             </div>
+          ) : activeTab === 'students' ? (
+            <StudentManagement />
+          ) : activeTab === 'lessons' ? (
+            <LessonManagement />
           ) : activeTab === 'subjects' ? (
             <SubjectManagement />
           ) : activeTab === 'chapters' ? (
             <ChapterManagement />
           ) : activeTab === 'books' ? (
             <BookManagement />
+          ) : activeTab === 'analytics' ? (
+            <AdminAnalytics />
+          ) : activeTab === 'roles' ? (
+            <RoleManagement />
+          ) : activeTab === 'validation' ? (
+            <CurriculumValidator />
           ) : (
             /* Placeholder View for Unimplemented Phase 4 Modules */
             <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-12 bg-slate-900/40 rounded-3xl border border-slate-800/80">

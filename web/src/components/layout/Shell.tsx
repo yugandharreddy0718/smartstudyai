@@ -7,20 +7,12 @@ import { useAuth } from '../../hooks/useAuth';
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const { profile } = useAuth();
-  const role = (profile?.role || 'student').trim();
-  const roleLower = role.toLowerCase();
-  const isAdmin = roleLower === 'admin';
-  const isSuperAdmin = roleLower === 'superadmin';
-  const showAdminPanel = isAdmin || isSuperAdmin;
-
-  console.log("========================================");
-  console.log("CURRENT COMPONENT: Shell.tsx");
-  console.log("ROLE:", role);
-  console.log("IS ADMIN:", isAdmin);
-  console.log("IS SUPER ADMIN:", isSuperAdmin);
-  console.log("SHOW ADMIN PANEL:", showAdminPanel);
-  console.log("========================================");
+  const { profile, loading } = useAuth();
+  const roleRaw = profile?.role || 'student';
+  const normalizedRole = String(roleRaw).trim().toLowerCase();
+  const isAdmin = normalizedRole === 'admin';
+  const isSuperAdmin = normalizedRole === 'superadmin';
+  const showAdminPanel = !loading && (isAdmin || isSuperAdmin);
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },

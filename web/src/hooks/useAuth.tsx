@@ -63,17 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             normalized = normalizeUserProfile(rawProfile, currentUser);
           }
 
-          // Priority: Firestore role || Token Claim role || Email check || normalized role || 'student'
-          const emailLower = (currentUser.email || '').toLowerCase();
-          const isSuperAdminEmail = emailLower.includes('yugandhar') || emailLower.includes('admin');
-          const effectiveRole = (docSnap.exists() && docSnap.data()?.role) || claimRole || (isSuperAdminEmail ? 'superAdmin' : normalized.role) || 'student';
-          normalized.role = effectiveRole;
+          // Priority: Firestore explicit role || Token Claim role || 'student'
+          const firestoreRole = docSnap.exists() ? docSnap.data()?.role : undefined;
+          const rawRole = firestoreRole || claimRole || 'student';
+          const normalizedRole = String(rawRole).trim().toLowerCase();
 
-          console.log("AUTH UID:", currentUser.uid);
-          console.log("AUTH EMAIL:", currentUser.email);
-          console.log("FIRESTORE ROLE:", docSnap.data()?.role);
-          console.log("AUTH CLAIM ROLE:", claimRole);
-          console.log("EFFECTIVE ROLE:", effectiveRole);
+          // Standardize normalized role onto user profile object
+          normalized.role = (normalizedRole === 'admin' || normalizedRole === 'superadmin') ? (normalizedRole as UserProfile['role']) : 'student';
+
+          if (process.env.NODE_ENV !== 'production' || (import.meta as any).env?.DEV) {
+            console.log("UID:", currentUser.uid);
+            console.log("EMAIL:", currentUser.email || 'N/A');
+            console.log("FIRESTORE ROLE:", firestoreRole || 'N/A');
+            console.log("AUTH CLAIM ROLE:", claimRole || 'N/A');
+            console.log("EFFECTIVE ROLE:", normalized.role);
+          }
 
           // CRITICAL: Set profile immediately so profile is populated before loading becomes false
           setProfile(normalized);

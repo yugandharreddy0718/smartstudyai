@@ -46,8 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
       email: data['email'] ?? '',
       displayName: data['name'],
       isGuest: user.isAnonymous,
-      grade: data['grade'],
-      studentClass: data['studentClass'],
+      studentClass: data['studentClass'] ?? data['grade'],
     );
 
     await localDataSource.saveUser(userModel);
@@ -103,8 +102,7 @@ class AuthRepositoryImpl implements AuthRepository {
     if (currentUser != null && currentUser.id == uid) {
       final updatedUser = currentUser.copyWith(
         displayName: name ?? currentUser.displayName,
-        grade: grade ?? currentUser.grade,
-        studentClass: studentClass ?? currentUser.studentClass,
+        studentClass: studentClass ?? grade ?? currentUser.studentClass,
       );
       await localDataSource.saveUser(updatedUser);
     }
