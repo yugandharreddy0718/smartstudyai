@@ -7,6 +7,7 @@ import 'widgets/continue_learning_card.dart';
 import 'widgets/subject_grid.dart';
 import 'widgets/recent_activity_list.dart';
 import 'widgets/dashboard_skeleton.dart';
+import 'package:go_router/go_router.dart';
 import 'widgets/custom_bottom_nav.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
@@ -76,6 +77,13 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
           setState(() {
             _currentIndex = index;
           });
+          if (index == 1) {
+            context.push('/search');
+          } else if (index == 2) {
+            context.push('/ai-tutor');
+          } else if (index == 3) {
+            context.push('/upload');
+          }
         },
       ),
     );

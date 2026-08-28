@@ -7,6 +7,8 @@ import '../providers/lesson_progress_provider.dart';
 import '../providers/offline_provider.dart';
 import 'widgets/markdown_math_viewer.dart';
 
+import 'widgets/ai_studio_toolbar.dart';
+
 class LessonReaderScreen extends ConsumerStatefulWidget {
   final LessonModel lesson;
 
@@ -112,9 +114,16 @@ class _LessonReaderScreenState extends ConsumerState<LessonReaderScreen> {
           ),
         ],
       ),
-      body: MarkdownMathViewer(
-        data: widget.lesson.contentMarkdown,
-        scrollController: _scrollController,
+      body: Column(
+        children: [
+          AIStudioToolbar(lesson: widget.lesson),
+          Expanded(
+            child: MarkdownMathViewer(
+              data: widget.lesson.contentMarkdown,
+              scrollController: _scrollController,
+            ),
+          ),
+        ],
       ),
       floatingActionButton: _progress > 0.95
           ? FloatingActionButton.extended(

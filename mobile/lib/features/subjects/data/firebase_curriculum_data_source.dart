@@ -5,12 +5,14 @@ import '../domain/subject_model.dart';
 import '../domain/chapter_model.dart';
 import '../domain/lesson_model.dart';
 
+import 'local_curriculum_data_source.dart';
+
 class FirebaseCurriculumDataSource implements CurriculumRepository {
   final FirebaseFirestore _firestore;
+  final LocalCurriculumDataSource _local = LocalCurriculumDataSource();
 
   FirebaseCurriculumDataSource(this._firestore);
 
-  @override
   @override
   Future<List<SubjectModel>> getSubjects(String classId) async {
     final cleanGrade = classId.replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
@@ -24,7 +26,7 @@ class FirebaseCurriculumDataSource implements CurriculumRepository {
           .collection('subjects')
           .orderBy('order')
           .get()
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 3));
 
       if (snapshot.docs.isEmpty && targetClassId != cleanGrade) {
         snapshot = await _firestore
@@ -33,22 +35,25 @@ class FirebaseCurriculumDataSource implements CurriculumRepository {
             .collection('subjects')
             .orderBy('order')
             .get()
-            .timeout(const Duration(seconds: 5));
+            .timeout(const Duration(seconds: 3));
       }
 
-      return snapshot.docs
-          .map((doc) => SubjectModel.fromMap(doc.data(), doc.id))
-          .toList();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs
+            .map((doc) => SubjectModel.fromMap(doc.data(), doc.id))
+            .toList();
+      }
     } catch (e) {
-      debugPrint('DEBUG: getSubjects timed out or failed: $e');
-      return []; // Return empty list instead of loading forever
+      debugPrint('DEBUG: getSubjects timed out or failed: $e. Using local curriculum fallback.');
     }
-  }
 
+    return await _local.getSubjects(cleanGrade);
+  }
 
   @override
   Future<List<ChapterModel>> getChapters(String classId, String subjectId) async {
-    debugPrint('DEBUG: Fetching chapters for $subjectId');
+    final cleanGrade = classId.replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
+    debugPrint('DEBUG: Fetching chapters for $subjectId (grade: $cleanGrade)');
     try {
       final snapshot = await _firestore
           .collection('curriculum')
@@ -58,20 +63,24 @@ class FirebaseCurriculumDataSource implements CurriculumRepository {
           .collection('chapters')
           .orderBy('order')
           .get()
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 3));
 
-      return snapshot.docs
-          .map((doc) => ChapterModel.fromMap(doc.data(), doc.id))
-          .toList();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs
+            .map((doc) => ChapterModel.fromMap(doc.data(), doc.id))
+            .toList();
+      }
     } catch (e) {
-      debugPrint('DEBUG: getChapters timed out or failed: $e');
-      return [];
+      debugPrint('DEBUG: getChapters timed out or failed: $e. Using local curriculum fallback.');
     }
+
+    return await _local.getChapters(cleanGrade, subjectId);
   }
 
   @override
   Future<List<LessonModel>> getLessons(String classId, String subjectId, String chapterId) async {
-    debugPrint('DEBUG: Fetching lessons for $chapterId');
+    final cleanGrade = classId.replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
+    debugPrint('DEBUG: Fetching lessons for $chapterId (grade: $cleanGrade)');
     try {
       final snapshot = await _firestore
           .collection('curriculum')
@@ -83,34 +92,43 @@ class FirebaseCurriculumDataSource implements CurriculumRepository {
           .collection('lessons')
           .orderBy('order')
           .get()
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 3));
 
-      return snapshot.docs
-          .map((doc) => LessonModel.fromMap(doc.data(), doc.id))
-          .toList();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs
+            .map((doc) => LessonModel.fromMap(doc.data(), doc.id))
+            .toList();
+      }
     } catch (e) {
-      debugPrint('DEBUG: getLessons timed out or failed: $e');
-      return [];
+      debugPrint('DEBUG: getLessons timed out or failed: $e. Using local curriculum fallback.');
     }
+
+    return await _local.getLessons(cleanGrade, subjectId, chapterId);
   }
 
   @override
   Future<LessonModel> getLessonDetails(String classId, String subjectId, String chapterId, String lessonId) async {
-    final doc = await _firestore
-        .collection('curriculum')
-        .doc(classId)
-        .collection('subjects')
-        .doc(subjectId)
-        .collection('chapters')
-        .doc(chapterId)
-        .collection('lessons')
-        .doc(lessonId)
-        .get();
+    final cleanGrade = classId.replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
+    try {
+      final doc = await _firestore
+          .collection('curriculum')
+          .doc(classId)
+          .collection('subjects')
+          .doc(subjectId)
+          .collection('chapters')
+          .doc(chapterId)
+          .collection('lessons')
+          .doc(lessonId)
+          .get()
+          .timeout(const Duration(seconds: 3));
 
-    if (!doc.exists || doc.data() == null) {
-      throw Exception('Lesson not found');
+      if (doc.exists && doc.data() != null) {
+        return LessonModel.fromMap(doc.data()!, doc.id);
+      }
+    } catch (e) {
+      debugPrint('DEBUG: getLessonDetails timed out or failed: $e. Using local curriculum fallback.');
     }
 
-    return LessonModel.fromMap(doc.data()!, doc.id);
+    return await _local.getLessonDetails(cleanGrade, subjectId, chapterId, lessonId);
   }
 }

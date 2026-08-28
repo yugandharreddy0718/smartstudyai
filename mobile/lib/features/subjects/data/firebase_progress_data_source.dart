@@ -36,12 +36,13 @@ class FirebaseProgressDataSource implements ProgressRepository {
   @override
   Future<void> markLessonComplete(String uid, String lessonId) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _firestore
+    final progressRef = _firestore
         .collection('users')
         .doc(uid)
         .collection('lessonProgress')
-        .doc(lessonId)
-        .set({
+        .doc(lessonId);
+
+    await progressRef.set({
       'lessonId': lessonId,
       'completed': true,
       'isCompleted': true,
@@ -51,6 +52,32 @@ class FirebaseProgressDataSource implements ProgressRepository {
       'completedAt': now,
       'updatedAt': now,
     }, SetOptions(merge: true));
+
+    // Also update parent user profile stats and completedLessons list
+    final userRef = _firestore.collection('users').doc(uid);
+    final userSnap = await userRef.get();
+    if (userSnap.exists && userSnap.data() != null) {
+      final data = userSnap.data()!;
+      final List<dynamic> currentCompleted = List.from(data['completedLessons'] ?? []);
+      if (!currentCompleted.contains(lessonId)) {
+        currentCompleted.add(lessonId);
+      }
+
+      final int currentXp = (data['xp'] as int? ?? data['stats']?['xp'] as int? ?? 0);
+      final int newXp = currentXp + 100;
+      final int newLevel = (newXp ~/ 500) + 1;
+      final int currentStreak = (data['streak'] as int? ?? data['dailyStreak'] as int? ?? 0);
+      final int newStreak = currentStreak == 0 ? 1 : currentStreak;
+
+      await userRef.set({
+        'completedLessons': currentCompleted,
+        'xp': newXp,
+        'level': newLevel,
+        'streak': newStreak,
+        'dailyStreak': newStreak,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+    }
   }
 
 

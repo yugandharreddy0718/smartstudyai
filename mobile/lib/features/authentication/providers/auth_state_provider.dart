@@ -13,7 +13,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/api/api_client.dart';
 
 // Providers for dependencies
-final dioProvider = Provider<Dio>((ref) => ApiClient().dio);
+final dioProvider = Provider<Dio>((ref) => ApiClient.dio);
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
 final firestoreProvider = Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'ai-studio-2bce6e12-8e86-497d-9a6c-372bf2ee28e4'));
 final googleSignInProvider = Provider<GoogleSignIn>((ref) => GoogleSignIn.instance);

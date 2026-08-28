@@ -19,7 +19,9 @@ class SubjectListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () {}, // To be implemented
+            onPressed: () {
+              context.push('/search');
+            },
           )
         ],
       ),

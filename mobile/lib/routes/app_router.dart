@@ -17,6 +17,9 @@ import '../features/subjects/presentation/lesson_reader_screen.dart';
 import '../features/subjects/domain/subject_model.dart';
 import '../features/subjects/domain/chapter_model.dart';
 import '../features/subjects/domain/lesson_model.dart';
+import '../features/search/presentation/search_screen.dart';
+import '../features/ai_studio/presentation/ai_tutor_screen.dart';
+import '../features/ai_studio/presentation/upload_ocr_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -148,6 +151,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final lesson = state.extra as LessonModel;
           return LessonReaderScreen(lesson: lesson);
         },
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '/ai-tutor',
+        builder: (context, state) => const AITutorScreen(),
+      ),
+      GoRoute(
+        path: '/upload',
+        builder: (context, state) => const UploadOCRScreen(),
       ),
     ],
   );

@@ -30,9 +30,9 @@ class CustomBottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(context, icon: Icons.home_rounded, label: 'Home', index: 0),
-              _buildNavItem(context, icon: Icons.explore_rounded, label: 'Explore', index: 1),
-              _buildNavItem(context, icon: Icons.leaderboard_rounded, label: 'Leaderboard', index: 2),
-              _buildNavItem(context, icon: Icons.person_rounded, label: 'Profile', index: 3),
+              _buildNavItem(context, icon: Icons.search_rounded, label: 'Search', index: 1),
+              _buildNavItem(context, icon: Icons.smart_toy_rounded, label: 'AI Tutor', index: 2),
+              _buildNavItem(context, icon: Icons.cloud_upload_rounded, label: 'Upload', index: 3),
             ],
           ),
         ),
