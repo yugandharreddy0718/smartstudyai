@@ -63,7 +63,7 @@ jobs:
 
       # Stage 7: Upload Test Deliverables & Artifacts (30 Days Retention)
       - name: Stage 7 - Upload Web QA Deliverables & Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: smartstudy-web-reports

@@ -47,7 +47,7 @@ jobs:
           find . -maxdepth 3 -type d -name dist
 
       - name: Stage 7 - Upload Build Bundle Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: SmartStudy-AI-Production-Bundle
           path: web/dist/
