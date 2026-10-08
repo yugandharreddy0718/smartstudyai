@@ -60,7 +60,7 @@ jobs:
 
       # Stage 18: Upload Deliverables as Artifacts
       - name: Stage 18 - Upload Mobile Report Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: smartstudy-mobile-reports
