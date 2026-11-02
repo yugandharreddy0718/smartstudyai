@@ -378,9 +378,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       if (summary.blocked > 0) {
         process.exit(2);
       }
+      process.exit(0);
     } finally {
       if (localBackend && localBackend.stop) {
-        localBackend.stop();
+        try { localBackend.stop(); } catch (e) {}
       }
     }
   })().catch(err => {

@@ -59,8 +59,9 @@ export function killProcessTree(pid) {
       try {
         process.kill(-pid, 'SIGKILL');
       } catch (e) {
-        process.kill(pid, 'SIGKILL');
+        try { process.kill(pid, 'SIGKILL'); } catch (e2) {}
       }
+      try { execSync(`pkill -P ${pid} 2>/dev/null || true`, { stdio: 'ignore' }); } catch (e) {}
     }
   } catch (e) {
     // Process might already be dead
