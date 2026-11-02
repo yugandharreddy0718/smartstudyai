@@ -18,8 +18,39 @@ app.use((req, res, next) => {
   next();
 });
 
+// Request Logging Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const contentLength = req.headers['content-length'] || 0;
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[API REQUEST] ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | Size: ${contentLength} bytes | Time: ${duration}ms`);
+  });
+  
+  next();
+});
+
 // API Routes
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'smartstudy-backend'
+  });
+});
+
 app.use('/api/gemini', geminiRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Global Unhandled Error Middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('==================================================');
+  console.error(`[UNHANDLED BACKEND ERROR] ${req.method} ${req.originalUrl}`);
+  console.error(err?.stack || err);
+  console.error('==================================================');
+  res.status(500).json({
+    error: err?.message || 'Internal Server Error'
+  });
+});
 
 export default app;

@@ -11,10 +11,37 @@ final curriculumRepositoryProvider = Provider<CurriculumRepository>((ref) {
   return FirebaseCurriculumDataSource(ref.read(firestoreProvider));
 });
 
-// A provider that fetches subjects for a specific class
-final subjectsProvider = FutureProvider.family<List<SubjectModel>, String>((ref, classId) {
+// A provider that fetches subjects for a specific class and computes real-time completed lesson progress
+final subjectsProvider = FutureProvider.family<List<SubjectModel>, String>((ref, classId) async {
   final repo = ref.read(curriculumRepositoryProvider);
-  return repo.getSubjects(classId);
+  final authState = ref.watch(authStateProvider);
+  final cleanGrade = classId.replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
+
+  final rawSubjects = await repo.getSubjects(classId);
+  final completedLessonIds = authState.user?.completedLessons ?? [];
+
+  return rawSubjects.map((subject) {
+    final count = completedLessonIds.where((id) {
+      final lowerId = id.toLowerCase();
+      final subId = subject.id.toLowerCase();
+      final subName = subject.name.toLowerCase();
+
+      final matchesSub = lowerId.contains(subId) || 
+                         lowerId.contains(subName) ||
+                         (subId.contains('math') && lowerId.contains('math')) ||
+                         (subId.contains('phys') && lowerId.contains('phys')) ||
+                         (subId.contains('chem') && lowerId.contains('chem')) ||
+                         (subId.contains('bio') && lowerId.contains('bio')) ||
+                         (subId.contains('hist') && lowerId.contains('hist')) ||
+                         (subId.contains('geog') && lowerId.contains('geog'));
+      
+      final matchesGrade = cleanGrade.isEmpty || lowerId.contains('g$cleanGrade') || lowerId.contains('class_$cleanGrade') || lowerId.contains('grade_$cleanGrade') || !lowerId.contains('g');
+      
+      return matchesSub && matchesGrade;
+    }).length;
+
+    return subject.copyWith(completedLessonsCount: count);
+  }).toList();
 });
 
 // A provider that fetches chapters for a specific subject

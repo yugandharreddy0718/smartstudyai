@@ -82,9 +82,9 @@ describe('SMARTSTUDY AI — PHASE 12: ADMIN PANEL TEST SUITE', () => {
     expect(stats.totalStudents).toBeGreaterThanOrEqual(1);
     expect(stats.totalAdmins).toBeGreaterThanOrEqual(1);
     expect(stats.totalSubjects).toBe(6);
-    expect(stats.totalChapters).toBe(178);
+    expect(stats.totalChapters).toBe(179);
     expect(stats.totalLessons).toBe(444);
-    expect(stats.totalCurriculumItems).toBe(628);
+    expect(stats.totalCurriculumItems).toBe(629);
   });
 
   it('ADMIN-007: Verifies browsing Grade 6 curriculum chapters', () => {
@@ -119,7 +119,7 @@ describe('SMARTSTUDY AI — PHASE 12: ADMIN PANEL TEST SUITE', () => {
   it('ADMIN-012: Validates that 444 lessons preserve all 13 required sections', () => {
     const report = validateCurriculumContent();
     expect(report.passed).toBe(true);
-    expect(report.totalChapters).toBe(178);
+    expect(report.totalChapters).toBe(179);
     expect(report.totalLessons).toBe(444);
     expect(report.uniqueLessonIdsCount).toBe(444);
     expect(report.noEmptyLessons).toBe(true);

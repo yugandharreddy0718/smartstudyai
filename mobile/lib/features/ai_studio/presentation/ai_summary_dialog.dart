@@ -52,7 +52,13 @@ class AISummaryDialog extends ConsumerWidget {
           const Divider(),
           Expanded(
             child: summaryAsync.when(
-              data: (summaryText) => MarkdownMathViewer(data: summaryText),
+              data: (summaryText) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: MarkdownMathViewer(
+                  data: summaryText,
+                  customTextColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                ),
+              ),
               loading: () => const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

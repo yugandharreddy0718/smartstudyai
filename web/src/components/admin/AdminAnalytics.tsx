@@ -118,9 +118,11 @@ export default function AdminAnalytics() {
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Curriculum Modules</span>
             <div className="text-2xl font-black text-purple-400 mt-1">
-              444 Lessons
+              {loading ? '...' : `${(Object.values(data?.subjectDistribution || {}) as number[]).reduce((a, b) => a + b, 0)} Lessons`}
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">178 chapters published</p>
+            <p className="text-[10px] text-slate-500 mt-1">
+              {loading ? '—' : `${Object.keys(data?.subjectDistribution || {}).length} subject streams`} across 5 grades
+            </p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
             <BookOpen className="w-5 h-5" />
@@ -172,13 +174,15 @@ export default function AdminAnalytics() {
               <PieChart className="w-5 h-5 text-emerald-400" />
               <h3 className="font-bold text-slate-100 text-base">Subject Content Distribution</h3>
             </div>
-            <span className="text-xs text-slate-400">444 Total Lessons</span>
+            <span className="text-xs text-slate-400">
+              {loading ? '...' : `${(Object.values(data?.subjectDistribution || {}) as number[]).reduce((a, b) => a + b, 0)} Total Lessons`}
+            </span>
           </div>
 
           <div className="space-y-3 pt-2">
             {data?.subjectDistribution && Object.entries(data.subjectDistribution).map(([subj, countVal]) => {
               const count: number = Number(countVal);
-              const totalLessons: number = 444;
+              const totalLessons: number = (Object.values(data.subjectDistribution) as number[]).reduce((a: number, b: number) => a + b, 0) || 1;
               const percent: number = Math.round((count / totalLessons) * 100);
 
               return (

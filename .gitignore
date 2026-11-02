@@ -25,10 +25,25 @@ test-results/
 screenshots/
 reports/
 Test Results/
+public/reports/
 selenium-tests/excel/
 selenium-tests/reports/
 selenium-tests/screenshots/
 selenium-tests/logs/
+appium-tests/reports/
+appium-tests/screenshots/
+appium-tests/logs/
+appium-tests/excel/
+automation/logs/
+automation/reports/
+automation/screenshots/
+automation/excel/
+scratch/
+
+# Flutter & Dart Caches
+.dart_tool/
+mobile/.dart_tool/
+mobile/build/
 
 
 # Android & Capacitor Build Output
@@ -41,3 +56,7 @@ android/local.properties
 .idea/
 .DS_Store
 Thumbs.db
+
+# Python cache files
+__pycache__/
+*.py[cod]

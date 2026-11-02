@@ -9,16 +9,32 @@ export async function createDriver() {
     options.addArguments('--headless=new');
   }
   
-  options.addArguments('--no-sandbox');
-  options.addArguments('--disable-dev-shm-usage');
-  options.addArguments('--disable-gpu');
-  options.addArguments('--window-size=1920,1080');
-  options.addArguments('--remote-allow-origins=*');
+  options.addArguments(
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--window-size=1920,1080',
+    '--remote-allow-origins=*',
+    '--disable-extensions',
+    '--disable-infobars',
+    '--ignore-certificate-errors',
+    '--disable-search-engine-choice-screen'
+  );
 
-  const driver = await new Builder()
+  if (process.env.CHROME_BIN) {
+    options.setChromeBinaryPath(process.env.CHROME_BIN);
+  }
+
+  const builder = new Builder()
     .forBrowser('chrome')
-    .setChromeOptions(options)
-    .build();
+    .setChromeOptions(options);
+
+  if (process.env.CHROMEDRIVER_PATH) {
+    const service = new chrome.ServiceBuilder(process.env.CHROMEDRIVER_PATH);
+    builder.setChromeService(service);
+  }
+
+  const driver = await builder.build();
 
   await driver.manage().setTimeouts({
     implicit: config.implicitWait,

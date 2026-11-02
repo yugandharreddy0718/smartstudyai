@@ -73,16 +73,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </NavLink>
           ))}
         </nav>
-
-        <div className="p-4 mt-auto shrink-0">
-          <div className="bg-brand-primary/5 rounded-3xl p-4 border border-brand-primary/10">
-            <p className="text-[10px] font-bold text-brand-primary uppercase tracking-widest mb-2">Pro Plan</p>
-            <p className="text-xs text-slate-600 font-medium mb-3">Get unlimited AI study analysis!</p>
-            <button className="w-full py-2 bg-brand-primary text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 active:scale-95 transition-all">
-              Upgrade Now
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -105,15 +95,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2.5 text-slate-400 hover:text-brand-primary bg-slate-50 hover:bg-brand-primary/5 rounded-xl transition-all relative">
-              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-            </button>
             <Link to="/profile" className="flex items-center gap-3 p-1 pr-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all">
               <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                YR
+                {!loading && profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : '??'}
               </div>
-              <span className="text-sm font-bold text-slate-700 hidden sm:block">Yugandhar</span>
+              <span className="text-sm font-bold text-slate-700 hidden sm:block">
+                {!loading && profile?.displayName ? profile.displayName.split(' ')[0] : ''}
+              </span>
             </Link>
           </div>
         </header>

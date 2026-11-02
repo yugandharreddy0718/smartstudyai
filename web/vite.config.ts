@@ -5,7 +5,13 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const port = Number(process.env.PORT || process.env.VITE_PORT) || 5173;
+  const isDev = mode === 'development';
+  // Use absolute '/' base in development or local test mode for robust SPA routing
+  const base = process.env.BASE_PATH || (isDev || process.env.LOCAL_TEST === 'true' ? '/' : './');
+
   return {
+    base,
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
@@ -16,6 +22,9 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
+      host: process.env.HOST || '0.0.0.0',
+      port,
+      strictPort: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
@@ -25,6 +34,11 @@ export default defineConfig(({mode}) => {
           changeOrigin: true,
         },
       },
+    },
+    preview: {
+      host: process.env.HOST || '0.0.0.0',
+      port,
+      strictPort: true,
     },
   };
 });

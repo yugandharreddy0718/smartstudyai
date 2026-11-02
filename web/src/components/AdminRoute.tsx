@@ -19,8 +19,10 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   const roleRaw = profile?.role || 'student';
-  const normalizedRole = String(roleRaw).trim().toLowerCase();
-  const isAllowed = normalizedRole === 'admin' || normalizedRole === 'superadmin';
+  // Canonical comparison: useAuth already preserves correct casing ('admin', 'superAdmin')
+  // Also tolerate legacy lowercase variants as a safety net
+  const roleNorm = String(roleRaw).trim().toLowerCase();
+  const isAllowed = roleNorm === 'admin' || roleNorm === 'superadmin';
 
   if (!isAllowed) {
     console.warn(`[Access Denied] User ${user.uid} with role '${profile?.role}' attempted to access Admin Panel.`);

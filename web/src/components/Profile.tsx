@@ -1,13 +1,22 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { User, LogOut, Award, Target, Calendar, Settings, ShieldCheck, Palette, GraduationCap } from 'lucide-react';
+import { User, LogOut, Award, Target, Calendar, GraduationCap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { logOut } from '@smartstudy/firebase';
 import { cn } from '../lib/utils';
 import { StudentClass } from '@smartstudy/shared';
 
 export default function Profile() {
-  const { profile, setStudentClass } = useAuth();
+  const { profile, user, setStudentClass } = useAuth();
+
+  const studentName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Student';
+  const studentEmail = profile?.email || user?.email || 'No email registered';
+  const shortId = profile?.uid ? profile.uid.slice(0, 8).toUpperCase() : (user?.uid ? user.uid.slice(0, 8).toUpperCase() : 'N/A');
+  const studentXp = profile?.stats?.xp || 0;
+  const studentStreak = profile?.stats?.streak ?? 0;
+  const completedLessons = profile?.completedLessons || [];
+
+  const tier = studentXp >= 500 ? 'Master' : (studentXp >= 200 ? 'Scholar' : 'Learner');
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -19,7 +28,7 @@ export default function Profile() {
           <div className="relative group">
             <div className="w-32 h-32 rounded-[2rem] bg-brand-primary/10 flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
               {profile?.photoURL ? (
-                <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+                <img src={profile.photoURL} alt={studentName} className="w-full h-full object-cover" />
               ) : (
                 <User className="w-12 h-12 text-brand-primary" />
               )}
@@ -30,13 +39,13 @@ export default function Profile() {
           </div>
 
           <div className="text-center md:text-left flex-1">
-            <h2 className="text-3xl font-display font-bold mb-1">{profile?.displayName || 'Yugandhar'}</h2>
-            <p className="text-slate-400 font-medium mb-6">{profile?.email || 'yugandhar@example.com'}</p>
+            <h2 className="text-3xl font-display font-bold mb-1">{studentName}</h2>
+            <p className="text-slate-400 font-medium mb-6">{studentEmail}</p>
             
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
               <span className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wide">Grade {profile?.studentClass || '8'}</span>
-              <span className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs uppercase tracking-wide">Scholar Badge</span>
-              <span className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-wide">Student ID #{profile?.uid ? profile.uid.slice(0, 5) : '55321'}</span>
+              <span className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs uppercase tracking-wide">{tier} Badge</span>
+              <span className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-wide">Student ID #{shortId}</span>
             </div>
           </div>
 
@@ -51,10 +60,10 @@ export default function Profile() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatBox label="Experience" value={`${profile?.stats.xp || 0} XP`} icon={Award} color="bg-amber-50 text-amber-600" />
-        <StatBox label="Current Streak" value={`${profile?.stats.streak || 1} Days`} icon={Target} color="bg-orange-50 text-orange-600" />
-        <StatBox label="Lessons Done" value={String(profile?.completedLessons?.length || 0)} icon={Calendar} color="bg-indigo-50 text-indigo-600" />
-        <StatBox label="Rank" value="#124" icon={Trophy} color="bg-emerald-50 text-emerald-600" />
+        <StatBox label="Experience" value={`${studentXp} XP`} icon={Award} color="bg-amber-50 text-amber-600" />
+        <StatBox label="Current Streak" value={`${studentStreak} Days`} icon={Target} color="bg-orange-50 text-orange-600" />
+        <StatBox label="Lessons Done" value={String(completedLessons.length)} icon={Calendar} color="bg-indigo-50 text-indigo-600" />
+        <StatBox label="Tier" value={tier} icon={Trophy} color="bg-emerald-50 text-emerald-600" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -62,12 +71,12 @@ export default function Profile() {
         <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
           <h3 className="font-display font-bold text-xl mb-6">Badges & Achievements</h3>
           <div className="grid grid-cols-3 gap-6">
-            <BadgeItem icon="🔥" label="7 Day Streak" unlocked />
-            <BadgeItem icon="🧠" label="Math Pro" unlocked />
-            <BadgeItem icon="📚" label="Reading Owl" unlocked />
-            <BadgeItem icon="🎨" label="Creative" unlocked={false} />
-            <BadgeItem icon="⚡" label="Fast Learner" unlocked={false} />
-            <BadgeItem icon="🌟" label="Overachiever" unlocked={false} />
+            <BadgeItem icon="🔥" label="7 Day Streak" unlocked={studentStreak >= 7} />
+            <BadgeItem icon="🧠" label="Math Pro" unlocked={completedLessons.some(id => id.includes('maths'))} />
+            <BadgeItem icon="📚" label="Reading Owl" unlocked={completedLessons.length >= 5} />
+            <BadgeItem icon="🎨" label="Creative" unlocked={studentXp >= 200} />
+            <BadgeItem icon="⚡" label="Fast Learner" unlocked={completedLessons.length >= 10} />
+            <BadgeItem icon="🌟" label="Overachiever" unlocked={studentXp >= 500} />
           </div>
         </section>
 
@@ -105,10 +114,7 @@ export default function Profile() {
             <p className="text-[10px] text-slate-400 font-medium">Changing your grade loads grade-aligned chapters, subjects, and study tasks dynamically.</p>
           </div>
           
-          <SettingItem icon={Settings} label="General Settings" />
-          <SettingItem icon={Palette} label="Appearance & Theme" />
-          <SettingItem icon={ShieldCheck} label="Privacy & Security" />
-          <div className="pt-4 mt-4 border-t border-slate-50 flex items-center justify-between text-slate-300 text-xs font-medium">
+          <div className="pt-4 mt-4 border-t border-slate-50 flex items-center justify-between text-slate-400 text-xs font-medium">
              <span>App Version 1.0.0</span>
              <span>SmartStudy AI 2026</span>
           </div>
@@ -148,20 +154,4 @@ function Trophy({ className }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
   );
-}
-
-function SettingItem({ icon: Icon, label }: { icon: any, label: string }) {
-  return (
-    <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-colors text-slate-600 group">
-      <div className="flex items-center gap-4">
-        <Icon className="w-5 h-5 text-slate-400 group-hover:text-brand-primary transition-colors" />
-        <span className="font-bold text-sm">{label}</span>
-      </div>
-      <ArrowRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
-    </button>
-  );
-}
-
-function ArrowRight({ className }: { className?: string }) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
 }

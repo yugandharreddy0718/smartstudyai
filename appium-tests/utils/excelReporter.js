@@ -279,4 +279,48 @@ export async function generateAppiumReports(options) {
 
   fs.copyFileSync(excelPath, path.join(excelDir, 'appium-report.xlsx'));
   fs.copyFileSync(excelPath, path.join(mobileBaseDir, 'appium-report.xlsx'));
+
+  // Also mirror directly to canonical reports/appium/ directory
+  const rootReportsDir = path.resolve(__dirname, '../../reports/appium');
+  fs.mkdirSync(rootReportsDir, { recursive: true });
+  fs.copyFileSync(htmlPath, path.join(rootReportsDir, 'appium-report.html'));
+  fs.copyFileSync(excelPath, path.join(rootReportsDir, 'appium-report.xlsx'));
+
+  // JUnit XML Report
+  const xmlEscape = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const junitXml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="SmartStudy AI Appium Mobile Tests" tests="${results.length}" failures="${failed}" errors="0" skipped="${notExecuted}" time="${(totalDuration / 1000).toFixed(2)}">
+  <testsuite name="Appium Mobile E2E" tests="${results.length}" failures="${failed}" errors="0" skipped="${notExecuted}">
+${results.map(r => {
+  let inner = '';
+  if (r.status === 'FAIL') {
+    inner = `\n      <failure message="${xmlEscape(r.errorMessage || r.details)}">${xmlEscape(r.errorMessage || r.details)}</failure>`;
+  } else if (r.status === 'NOT_EXECUTED' || r.status === 'BLOCKED') {
+    inner = `\n      <skipped message="Android physical device ${deviceId} is offline / disconnected; live test blocked"/>`;
+  }
+  return `    <testcase classname="${xmlEscape(r.suite)}" name="${xmlEscape(r.id + ' ' + r.name)}" time="${((r.duration || 0) / 1000).toFixed(3)}">${inner}
+    </testcase>`;
+}).join('\n')}
+  </testsuite>
+</testsuites>`;
+  fs.writeFileSync(path.join(rootReportsDir, 'appium-junit.xml'), junitXml, 'utf8');
+
+  // JSON summary
+  const jsonSummary = {
+    timestamp: new Date().toISOString(),
+    executionMode,
+    deviceId,
+    deviceAvailable,
+    driverConnected,
+    totalScenarios: results.length,
+    executed,
+    passed,
+    failed,
+    blocked: !deviceAvailable ? results.length : 0,
+    notExecuted,
+    passRate,
+    totalDuration,
+    results
+  };
+  fs.writeFileSync(path.join(rootReportsDir, 'appium-results.json'), JSON.stringify(jsonSummary, null, 2), 'utf8');
 }

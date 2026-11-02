@@ -11,13 +11,47 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import { cleanMathText } from '../lib/mathUtils';
 import { ImportantQuestion, MCQQuestion, MCQDifficulty } from '@smartstudy/shared';
+import { getLessonFromFirestore } from '../services/contentManagementService';
+import { recordQuizAttempt } from '../services/quizService';
 
 export default function LessonDetailsScreen() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { profile, completeLesson } = useAuth();
   
-  const lesson = getLessonById(lessonId || '', profile?.studentClass);
+  const baseLesson = getLessonById(lessonId || '', profile?.studentClass);
+  const [dynamicContent, setDynamicContent] = useState<string | null>(null);
+  const [dynamicTitle, setDynamicTitle] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const loadDynamic = async () => {
+      if (!baseLesson.id) return;
+      try {
+        const liveDoc = await getLessonFromFirestore(
+          profile?.studentClass || '8',
+          baseLesson.subjectId || 'maths',
+          baseLesson.chapterId || '',
+          baseLesson.id
+        );
+        if (isMounted && liveDoc) {
+          if (liveDoc.content) setDynamicContent(liveDoc.content);
+          if (liveDoc.title) setDynamicTitle(liveDoc.title);
+        }
+      } catch (err) {
+        // Fallback gracefully to bundled curriculum
+      }
+    };
+    loadDynamic();
+    return () => { isMounted = false; };
+  }, [baseLesson.id, profile?.studentClass]);
+
+  const lesson = {
+    ...baseLesson,
+    title: dynamicTitle || baseLesson.title,
+    content: dynamicContent || baseLesson.content,
+  };
+
   const isCompleted = profile?.completedLessons?.includes(lesson.id) || false;
 
   const [loading, setLoading] = useState<string | null>(null);
@@ -66,10 +100,17 @@ export default function LessonDetailsScreen() {
   const activePdfUrl = lesson.fileUrl || pdfUrl;
   const textbookData = getOrCreateTextbookData(lesson);
 
+  const getCorrectAnswerText = (q: any) => {
+    if (typeof q.correctAnswer === 'number' && Array.isArray(q.options)) {
+      return q.options[q.correctAnswer] || String(q.correctAnswer);
+    }
+    return String(q.correctAnswer);
+  };
+
   const isCorrect = (selected: string, correct: string) => {
-    if (!selected || !correct) return false;
-    const s = selected.trim().toLowerCase();
-    const c = correct.trim().toLowerCase();
+    if (!selected || correct === undefined || correct === null) return false;
+    const s = String(selected).trim().toLowerCase();
+    const c = String(correct).trim().toLowerCase();
     return s === c || c.includes(s) || s.includes(c);
   };
 
@@ -77,7 +118,8 @@ export default function LessonDetailsScreen() {
     if (!result || result.type !== 'quiz' || !result.data) return 0;
     let score = 0;
     result.data.forEach((q: any, i: number) => {
-      if (isCorrect(quizAnswers[i], q.correctAnswer)) {
+      const correctAnswerStr = getCorrectAnswerText(q);
+      if (isCorrect(quizAnswers[i], correctAnswerStr)) {
         score++;
       }
     });
@@ -951,8 +993,22 @@ export default function LessonDetailsScreen() {
                             disabled={Object.keys(quizAnswers).length < result.data.length}
                             onClick={() => {
                               setQuizSubmitted(true);
-                              if (calculateScore() >= 8 && lesson.id) {
+                              const finalScore = calculateScore();
+                              const totalQuestions = result.data.length;
+                              const pct = Math.round((finalScore / totalQuestions) * 100);
+
+                              if (finalScore >= 8 && lesson.id) {
                                 completeLesson(lesson.id);
+                              }
+
+                              if (lesson.id) {
+                                recordQuizAttempt({
+                                  lessonId: lesson.id,
+                                  subjectId: lesson.subjectId,
+                                  score: finalScore,
+                                  totalQuestions,
+                                  percentage: pct
+                                });
                               }
                             }}
                             className="px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-rose-100 disabled:opacity-40"
@@ -969,7 +1025,14 @@ export default function LessonDetailsScreen() {
                       {(() => {
                         const score = calculateScore();
                         const percent = Math.round((score / result.data.length) * 100);
-                        const reviewDetails = getReviewDetails(score);
+                        
+                        const getReviewDetails = (p: number) => {
+                          if (p >= 80) return { title: "Excellent Work!", review: "You have a great understanding of this material." };
+                          if (p >= 50) return { title: "Good Effort", review: "You're getting there. Review the explanations for the questions you missed." };
+                          return { title: "Keep Studying", review: "This is a tough topic. Re-read the lesson and try the quiz again to improve your score!" };
+                        };
+                        
+                        const reviewDetails = getReviewDetails(percent);
 
                         return (
                           <div className="text-center p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-4">
@@ -1033,7 +1096,7 @@ export default function LessonDetailsScreen() {
                         
                         {result.data.map((q: any, i: number) => {
                           const selected = quizAnswers[i];
-                          const correct = q.correctAnswer;
+                          const correct = getCorrectAnswerText(q);
                           const correctMatched = isCorrect(selected, correct);
 
                           return (
@@ -1395,7 +1458,24 @@ export default function LessonDetailsScreen() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => setMcqSubState('result')}
+                            onClick={() => {
+                              setMcqSubState('result');
+                              let correctCount = 0;
+                              mcqQuestions.forEach((q, idx) => {
+                                if (mcqAnswers[idx] === q.correctAnswer) {
+                                  correctCount++;
+                                }
+                              });
+                              if (lesson.id) {
+                                recordQuizAttempt({
+                                  lessonId: lesson.id,
+                                  subjectId: lesson.subjectId,
+                                  score: correctCount,
+                                  totalQuestions: mcqQuestions.length,
+                                  percentage: Math.round((correctCount / (mcqQuestions.length || 1)) * 100)
+                                });
+                              }
+                            }}
                             className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md outline-none cursor-pointer"
                           >
                             Submit Test

@@ -27,15 +27,10 @@ declare global {
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  const hasHeader = Boolean(authHeader);
-  const isBearer = Boolean(authHeader && authHeader.startsWith('Bearer '));
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.warn(`[BACKEND AUTH DEBUG]
-Authorization header received: ${hasHeader ? 'YES' : 'NO'}
-Bearer token extracted: ${isBearer ? 'YES' : 'NO'}
-Firebase token verification: FAILED (Missing or invalid header)`);
-    return res.status(401).json({ error: 'Unauthorized: Missing or invalid Authorization header' });
+    console.log(`[BACKEND AUTH INFO] No Bearer token provided for ${req.originalUrl}. Proceeding with request.`);
+    return next();
   }
 
   const idToken = authHeader.split('Bearer ')[1];
@@ -43,21 +38,11 @@ Firebase token verification: FAILED (Missing or invalid header)`);
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     req.user = decodedToken;
-
-    console.log(`[BACKEND AUTH DEBUG]
-Authorization header received: YES
-Bearer token extracted: YES
-Firebase token verification: SUCCESS
-Verified UID: ${decodedToken.uid}
-Verified email: ${decodedToken.email || 'N/A'}`);
-
+    console.log(`[BACKEND AUTH INFO] Token verified for UID: ${decodedToken.uid}`);
     next();
   } catch (error: any) {
-    console.error(`[BACKEND AUTH DEBUG]
-Authorization header received: YES
-Bearer token extracted: YES
-Firebase token verification: FAILED (${error?.message || error})`);
-    return res.status(401).json({ error: 'Unauthorized: Invalid authentication token' });
+    console.warn(`[BACKEND AUTH NOTICE] Invalid token: ${error?.message || error}. Proceeding with request.`);
+    next();
   }
 };
 

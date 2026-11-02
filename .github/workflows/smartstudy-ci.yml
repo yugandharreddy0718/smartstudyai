@@ -1,0 +1,364 @@
+name: SmartStudy AI — CI/CD Production Release Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target Base URL for E2E Automation (leave empty for local test server)'
+        required: false
+        default: 'https://yugandharreddy0718.github.io/smartstudyai'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'smartstudy-ci-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # JOB 1: Backend Integrity & Build Verification
+  # =========================================================================
+  backend-verification:
+    name: 'Job 1: Backend Integrity & Build'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Backend (TypeScript Compiler)
+        run: npm run build:backend
+
+      - name: Verify Backend Build Output
+        run: |
+          node -e "
+            import fs from 'fs';
+            const serverPath = 'backend/dist/server.js';
+            if (!fs.existsSync(serverPath)) {
+              console.error('❌ Missing built backend file: ' + serverPath);
+              process.exit(1);
+            }
+            console.log('✅ Backend compiled successfully: ' + serverPath);
+          "
+
+  # =========================================================================
+  # JOB 2: Web Application Integrity, Unit Tests & Build
+  # =========================================================================
+  web-verification:
+    name: 'Job 2: Web Integrity, Tests & Build'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck (Web)
+        run: npm run typecheck
+
+      - name: Execute Vitest Suite (344 Tests)
+        run: npm test
+
+      - name: Build Web Application (Vite Production)
+        run: npm run build:web
+
+      - name: Verify Web Dist Artifact
+        run: |
+          node -e "
+            import fs from 'fs';
+            if (!fs.existsSync('web/dist/index.html')) {
+              console.error('❌ Missing web dist output');
+              process.exit(1);
+            }
+            console.log('✅ Web production build verified.');
+          "
+
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartstudy-web-build
+          path: web/dist/
+          retention-days: 30
+
+  # =========================================================================
+  # JOB 3: Flutter Mobile Analysis, Tests & APK Build
+  # =========================================================================
+  flutter-mobile:
+    name: 'Job 3: Flutter Mobile Analysis, Tests & APK Build'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter Installation
+        run: flutter --version
+
+      - name: Install Flutter Dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyze Flutter Code
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Run Flutter Unit & Parity Tests
+        working-directory: mobile
+        run: flutter test
+
+      - name: Build Android Debug APK
+        working-directory: mobile
+        run: flutter build apk --debug
+
+      - name: Upload Android Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartstudy-android-debug-apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+
+  # =========================================================================
+  # JOB 4: Integration & Security Audit
+  # =========================================================================
+  integration-security:
+    name: 'Job 4: Integration & Security Audit'
+    runs-on: ubuntu-latest
+    needs: [backend-verification, web-verification]
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Backend Application
+        run: npm run build:backend
+
+      - name: Execute Security & RBAC Audit
+        run: node scripts/run-security-audit.js
+
+      - name: Publish Security Summary to Step Summary
+        if: always()
+        run: |
+          if [ -f "reports/security/security-report.md" ]; then
+            cat reports/security/security-report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-audit-reports
+          path: |
+            reports/security/
+            reports/backend-server.log
+          retention-days: 30
+
+  # =========================================================================
+  # JOB 5: E2E Automation & Performance Smoke Baseline
+  # =========================================================================
+  e2e-performance:
+    name: 'Job 5: E2E Automation & Performance Baseline'
+    runs-on: ubuntu-latest
+    needs: [backend-verification, web-verification]
+    env:
+      BASE_URL: ${{ github.event.inputs.target_url || 'https://yugandharreddy0718.github.io/smartstudyai' }}
+      BROWSER: chrome
+      HEADLESS: 'true'
+      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Install Python Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r selenium-tests/requirements.txt
+
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: Configure Driver Environment
+        run: |
+          echo "CHROMEDRIVER_PATH=$(which chromedriver)" >> $GITHUB_ENV
+          echo "CHROME_BIN=$(which google-chrome)" >> $GITHUB_ENV
+          echo "ChromeDriver Path: $(which chromedriver)"
+          echo "Google Chrome Path: $(which google-chrome)"
+          google-chrome --version
+          chromedriver --version
+
+      - name: Execute Selenium Web Automation Suite
+        id: run_selenium
+        continue-on-error: true
+        run: |
+          mkdir -p reports/selenium/screenshots
+          node selenium-tests/runner.js
+
+      - name: Generate Selenium Reports & Summaries
+        if: always()
+        run: |
+          python selenium-tests/reporter.py
+
+      - name: Publish Selenium Summary to Step Summary
+        if: always()
+        run: |
+          python -c "
+          import json, os
+          res_path = 'reports/selenium/selenium-results.json'
+          summary_file = os.environ.get('GITHUB_STEP_SUMMARY')
+          if os.path.exists(res_path) and summary_file:
+              with open(res_path) as f:
+                  data = json.load(f)
+              meta = data.get('metadata', {}).get('summary', {})
+              with open(summary_file, 'a', encoding='utf-8') as out:
+                  out.write('## 🌐 Selenium Web Automation Results\n\n')
+                  out.write(f'Target URL: \`{os.environ.get(\"BASE_URL\")}\`\n\n')
+                  out.write('| Metric | Count |\n|---|---|\n')
+                  out.write(f'| **Total Documented Cases** | {meta.get(\"totalCases\", 0)} |\n')
+                  out.write(f'| **Executable Tests** | {meta.get(\"executableCount\", 0)} |\n')
+                  out.write(f'| **Passed** | {meta.get(\"passed\", 0)} ✅ |\n')
+                  out.write(f'| **Failed** | {meta.get(\"failed\", 0)} ❌ |\n')
+                  out.write(f'| **Blocked** | {meta.get(\"blocked\", 0)} ⚠️ |\n')
+                  out.write(f'| **Not Automated** | {meta.get(\"notAutomated\", 0)} 📋 |\n')
+                  out.write(f'| **Executable Pass Rate** | {meta.get(\"passRate\", \"0%\")} |\n\n')
+          "
+
+      - name: Upload Selenium Artifacts (30-day Retention)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selenium-test-reports
+          path: |
+            reports/selenium/Selenium_Test_Report.xlsx
+            reports/selenium/selenium-report.html
+            reports/selenium/selenium-results.json
+            reports/selenium/selenium-junit.xml
+            reports/selenium/screenshots/
+          retention-days: 30
+
+      - name: Build Web Application for k6 Preview
+        run: npm run build:web
+
+      - name: Setup Grafana k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Start Managed Local Frontend Test Server
+        run: |
+          mkdir -p reports/performance
+          npx vite preview --port 5173 --strictPort --host 0.0.0.0 --cwd web > reports/frontend-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:5173/ > /dev/null; then
+              echo "✅ Local test server ready at http://127.0.0.1:5173"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Execute k6 Smoke Check
+        run: |
+          k6 run -e TARGET_URL=http://127.0.0.1:5173 -e MODE=smoke performance-tests/k6-baseline.js
+
+      - name: Stop Managed Test Server
+        if: always()
+        run: |
+          if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+          fi
+
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-performance-reports
+          path: |
+            reports/performance/
+            reports/frontend-server.log
+          retention-days: 30
+
+  # =========================================================================
+  # JOB 6: Consolidated Release Status
+  # =========================================================================
+  release-status:
+    name: 'Job 6: Final Release Status & Summary'
+    runs-on: ubuntu-latest
+    needs: [backend-verification, web-verification, flutter-mobile, integration-security, e2e-performance]
+    if: always()
+    steps:
+      - name: Publish Consolidated Pipeline Summary
+        run: |
+          echo "# 🚀 SmartStudy AI — Production Release Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Pipeline Stage | Result | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Job 1: Backend Verification** | ${{ needs.backend-verification.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }} | Express TypeScript build & health |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Job 2: Web Verification** | ${{ needs.web-verification.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }} | Typecheck, 344 Vitest tests, Vite build |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Job 3: Flutter Mobile** | ${{ needs.flutter-mobile.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }} | Analyze, 17 unit tests, debug APK build |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Job 4: Integration & Security** | ${{ needs.integration-security.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }} | Firestore rules & API vulnerability audit |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Job 5: E2E & Performance** | ${{ needs.e2e-performance.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }} | Selenium Smoke & k6 performance |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.backend-verification.result }}" != "success" ] || \
+             [ "${{ needs.web-verification.result }}" != "success" ] || \
+             [ "${{ needs.flutter-mobile.result }}" != "success" ] || \
+             [ "${{ needs.integration-security.result }}" != "success" ]; then
+            echo "❌ **Release Pipeline Failed**: One or more critical build or verification stages failed." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "🎉 **All Critical Pipeline Stages Passed! Release Candidate is Ready for Demonstration.**" >> $GITHUB_STEP_SUMMARY
+          fi

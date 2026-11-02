@@ -2,6 +2,7 @@ import '../domain/curriculum_repository.dart';
 import '../domain/subject_model.dart';
 import '../domain/chapter_model.dart';
 import '../domain/lesson_model.dart';
+import '../domain/book_model.dart';
 
 class LocalCurriculumDataSource implements CurriculumRepository {
   static const Map<String, Map<String, List<Map<String, String>>>> _curriculumData = {
@@ -366,6 +367,11 @@ class LocalCurriculumDataSource implements CurriculumRepository {
       order: subNum,
       estimatedMinutes: 15,
     );
+  }
+
+  @override
+  Future<List<BookModel>> getBooks(String classId, {String? subjectId}) async {
+    return [];
   }
 
   static String _generate13SectionContent(String chapterId, String title, int subNum) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getChaptersBySubject, getLessonById, CurriculumChapter } from '../../data/curriculum';
+import { saveLesson } from '../../services/contentManagementService';
 import { 
   FileText, 
   Search, 
@@ -146,13 +147,26 @@ export default function LessonManagement() {
     setIsSaving(true);
 
     try {
-      // In-memory edit update (preserving IDs)
+      // 1. In-memory edit update (preserving IDs)
       editingLesson.title = editedTitle.trim();
       editingLesson.content = editedContent;
 
+      // 2. Persist to Firestore so students and mobile app receive the dynamic update
+      await saveLesson(
+        selectedGrade,
+        selectedSubject,
+        editingLesson.chapterId || editingLesson.id,
+        editingLesson.id,
+        {
+          title: editedTitle.trim(),
+          content: editedContent,
+          desc: editingLesson.desc
+        }
+      );
+
       setConfirmSaveModal(false);
       setEditingLesson(null);
-      setToastMessage(`Successfully saved changes for lesson "${editingLesson.id}".`);
+      setToastMessage(`Successfully saved and published changes for lesson "${editingLesson.id}".`);
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err: any) {
       alert(`Save error: ${err?.message || err}`);

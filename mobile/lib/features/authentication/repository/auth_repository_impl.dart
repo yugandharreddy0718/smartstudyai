@@ -21,17 +21,30 @@ class AuthRepositoryImpl implements AuthRepository {
     final docRef = firestore.collection('users').doc(user.uid);
     final docSnap = await docRef.get();
 
+    final cleanGrade = (grade ?? '8').replaceAll(RegExp(r'^(class_?)', caseSensitive: false), '');
+
     if (!docSnap.exists) {
       await docRef.set({
         'uid': user.uid,
-        'name': name ?? user.displayName ?? user.email?.split('@')[0] ?? 'User',
+        'id': user.uid,
+        'displayName': name ?? user.displayName ?? user.email?.split('@')[0] ?? 'Student',
+        'name': name ?? user.displayName ?? user.email?.split('@')[0] ?? 'Student',
         'email': user.email ?? '',
-        'grade': grade ?? 'Class 8',
+        'studentClass': cleanGrade,
+        'grade': cleanGrade,
+        'photoURL': user.photoURL ?? '',
         'photoUrl': user.photoURL ?? '',
+        'role': 'student',
         'provider': user.isAnonymous ? 'anonymous' : (user.providerData.isNotEmpty ? user.providerData[0].providerId : 'password'),
+        'stats': {
+          'xp': 0,
+          'level': 1,
+          'streak': 0,
+        },
         'xp': 0,
         'level': 1,
         'streak': 0,
+        'completedLessons': <String>[],
         'createdAt': DateTime.now().millisecondsSinceEpoch,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
       });
@@ -40,15 +53,12 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     final updatedSnap = await docRef.get();
-    final data = updatedSnap.data()!;
-    final userModel = UserModel(
-      id: user.uid,
-      email: data['email'] ?? '',
-      displayName: data['name'],
-      isGuest: user.isAnonymous,
-      studentClass: data['studentClass'] ?? data['grade'],
-    );
+    final data = updatedSnap.data() ?? {};
+    data['uid'] = user.uid;
+    data['id'] = user.uid;
+    data['isGuest'] = user.isAnonymous;
 
+    final userModel = UserModel.fromJson(data);
     await localDataSource.saveUser(userModel);
     return userModel;
   }

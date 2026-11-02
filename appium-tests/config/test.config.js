@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 export const config = {
   platformName: 'Android',
   deviceName: process.env.APPIUM_DEVICE || process.env.APPIUM_DEVICE_NAME || 'I2305',
+  udid: process.env.APPIUM_UDID || '10BF2M16KR003QB',
   automationName: 'UiAutomator2',
   appPath: process.env.APPIUM_APP_PATH || path.resolve(__dirname, '../../mobile/build/app/outputs/flutter-apk/app-debug.apk'),
   appPackage: process.env.APPIUM_APP_PACKAGE || 'com.smartstudy.ai.smartstudy_mobile',

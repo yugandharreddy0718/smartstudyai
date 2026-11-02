@@ -54,40 +54,46 @@ class FirebaseDashboardDataSource implements DashboardRemoteDataSource {
 
   @override
   Future<void> initializeUserDashboard(String uid) async {
-    final docRef = _firestore.collection('users').doc(uid);
-    final docSnap = await docRef.get();
-    
-    // Only initialize if it doesn't have XP (meaning it's fresh)
-    if (!docSnap.exists || !(docSnap.data()!.containsKey('xp'))) {
-      await docRef.set({
-        'xp': 0,
-        'level': 1,
-        'streak': 0,
-        'dailyStreak': 0,
-        'totalStudyMinutes': 0,
-        'completedLessons': 0,
-        'completedChapters': 0,
-      }, SetOptions(merge: true));
+    try {
+      final docRef = _firestore.collection('users').doc(uid);
+      final docSnap = await docRef.get();
 
-      // Add default subjects
-      final subjects = [
-        {'name': 'Mathematics', 'iconUrl': 'assets/icons/math.png', 'progressPercentage': 0, 'totalLessons': 20, 'completedLessons': 0},
-        {'name': 'Science', 'iconUrl': 'assets/icons/science.png', 'progressPercentage': 0, 'totalLessons': 25, 'completedLessons': 0},
-        {'name': 'History', 'iconUrl': 'assets/icons/history.png', 'progressPercentage': 0, 'totalLessons': 15, 'completedLessons': 0},
-      ];
+      if (!docSnap.exists || (docSnap.data() != null && !docSnap.data()!.containsKey('xp'))) {
+        final dataMap = docSnap.data();
+        final existingCompleted = (dataMap != null && dataMap['completedLessons'] is List) ? dataMap['completedLessons'] : <String>[];
 
-      for (var subject in subjects) {
-        await docRef.collection('subjects').add(subject);
+        await docRef.set({
+          'xp': 0,
+          'level': 1,
+          'streak': 0,
+          'dailyStreak': 0,
+          'totalStudyMinutes': 0,
+          'completedLessons': existingCompleted,
+          'completedChapters': 0,
+        }, SetOptions(merge: true));
+
+        // Add default subjects
+        final subjects = [
+          {'name': 'Mathematics', 'iconUrl': 'assets/icons/math.png', 'progressPercentage': 0, 'totalLessons': 20, 'completedLessons': 0},
+          {'name': 'Science', 'iconUrl': 'assets/icons/science.png', 'progressPercentage': 0, 'totalLessons': 25, 'completedLessons': 0},
+          {'name': 'History', 'iconUrl': 'assets/icons/history.png', 'progressPercentage': 0, 'totalLessons': 15, 'completedLessons': 0},
+        ];
+
+        for (var subject in subjects) {
+          await docRef.collection('subjects').add(subject);
+        }
+
+        // Add a welcome activity
+        await docRef.collection('recentActivity').add({
+          'title': 'Welcome to SmartStudy AI!',
+          'subjectId': 'system',
+          'subjectName': 'System',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'score': 100,
+        });
       }
-      
-      // Add a welcome activity
-      await docRef.collection('recentActivity').add({
-        'title': 'Welcome to SmartStudy AI!',
-        'subjectId': 'system',
-        'subjectName': 'System',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'score': 100,
-      });
+    } catch (e) {
+      // Non-fatal error during initialization
     }
   }
 }

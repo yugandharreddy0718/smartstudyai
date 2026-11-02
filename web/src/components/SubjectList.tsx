@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { ArrowRight, Search, BookOpen, Clock, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { getChaptersBySubject } from '../data/curriculum';
 
 const SUBJECTS = [
   { id: 'maths', name: 'Mathematics', icon: '📐', color: 'bg-indigo-500', count: 14 },
@@ -14,6 +16,8 @@ const SUBJECTS = [
 ];
 
 export default function SubjectList() {
+  const { profile } = useAuth();
+  const currentGrade = profile?.studentClass || '8';
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeFilter, setActiveFilter] = React.useState('All');
 
@@ -31,7 +35,7 @@ export default function SubjectList() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h2 className="font-display font-bold text-4xl mb-2 tracking-tight text-slate-900">Learning Library</h2>
-            <p className="text-slate-500 font-medium">Over <span className="text-brand-primary font-bold">1,200 lessons</span> powered by AI analysis.</p>
+            <p className="text-slate-500 font-medium">Over <span className="text-brand-primary font-bold">440 lessons</span> across Grades 6–10 powered by AI analysis.</p>
           </div>
           
           <div className="relative group">
@@ -65,7 +69,12 @@ export default function SubjectList() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredSubjects.map((subject) => (
+        {filteredSubjects.map((subject) => {
+          const chapters = getChaptersBySubject(subject.id, currentGrade);
+          const chapterCount = chapters.length;
+          const studyHours = Math.max(1, Math.round(chapterCount * 0.5));
+
+          return (
           <motion.div
             key={subject.id}
             layout
@@ -92,12 +101,12 @@ export default function SubjectList() {
                 <div className="flex items-center gap-4 mt-3">
                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                       <BookOpen className="w-3.5 h-3.5" />
-                      {subject.count} chapters
+                      {chapterCount} chapters
                    </div>
                    <div className="w-1 h-1 bg-slate-200 rounded-full" />
                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                       <Clock className="w-3.5 h-3.5" /> 
-                      12h Study
+                      {studyHours}h Study
                    </div>
                 </div>
               </div>
@@ -115,7 +124,8 @@ export default function SubjectList() {
               </div>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Stats Footnote */}

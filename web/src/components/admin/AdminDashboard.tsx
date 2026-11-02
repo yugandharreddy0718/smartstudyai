@@ -261,6 +261,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalStudents ?? 0
                       )}
@@ -279,6 +281,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalAdmins ?? 0
                       )}
@@ -297,6 +301,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalSubjects ?? 0
                       )}
@@ -315,6 +321,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalChapters ?? 0
                       )}
@@ -333,6 +341,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalLessons ?? 0
                       )}
@@ -351,6 +361,8 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-extrabold text-white mt-2">
                       {loading ? (
                         <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                      ) : error && stats === null ? (
+                        <span className="text-rose-400 text-lg font-medium">Unavailable</span>
                       ) : (
                         stats?.totalQuizzes ?? 0
                       )}
@@ -371,12 +383,20 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-200">Total Curriculum Baseline</h4>
-                    <p className="text-xs text-slate-400">Classes 6–10 • 178 Chapters • 444 Lessons across 6 Subject Streams.</p>
+                    <p className="text-xs text-slate-400">
+                      Classes 6–10 • {stats?.totalChapters ?? 178} Chapters • {stats?.totalLessons ?? 444} Lessons across {stats?.totalSubjects ?? 6} Subject Streams.
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-black text-indigo-400">
-                    {loading ? 'Loading...' : (stats?.totalCurriculumItems ?? 0)}
+                    {loading ? (
+                      <span className="text-slate-500 text-lg font-medium animate-pulse">Loading...</span>
+                    ) : error && stats === null ? (
+                      <span className="text-rose-400 text-lg font-medium">Unavailable</span>
+                    ) : (
+                      stats?.totalCurriculumItems ?? 0
+                    )}
                   </span>
                 </div>
               </div>

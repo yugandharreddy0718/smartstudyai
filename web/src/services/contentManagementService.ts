@@ -489,3 +489,117 @@ export async function deleteBook(classId: string, bookId: string): Promise<void>
   // 2. Delete Firestore metadata document
   await deleteDoc(docRef);
 }
+
+// ==========================================
+// 4. LESSON MANAGEMENT & DYNAMIC SYNC SERVICES
+// ==========================================
+
+export interface LessonData {
+  id: string;
+  chapterId?: string;
+  subjectId: string;
+  classId: string;
+  title: string;
+  desc: string;
+  content: string;
+  order: number;
+  status: ContentStatus;
+  updatedAt: number;
+  createdAt?: number;
+}
+
+export async function saveLesson(
+  classId: string,
+  subjectId: string,
+  chapterId: string,
+  lessonId: string,
+  data: Partial<LessonData>
+): Promise<LessonData> {
+  const targetClassId = formatClassId(classId);
+  const now = Date.now();
+  const payload: LessonData = {
+    id: lessonId,
+    chapterId: chapterId || '',
+    subjectId,
+    classId: targetClassId,
+    title: (data.title || '').trim(),
+    desc: (data.desc || '').trim(),
+    content: (data.content || '').trim(),
+    order: data.order ?? 1,
+    status: data.status || 'published',
+    updatedAt: now,
+    createdAt: data.createdAt || now,
+  };
+
+  // 1. Save to nested hierarchy: curriculum/{classId}/subjects/{subjectId}/chapters/{chapterId}/lessons/{lessonId}
+  if (chapterId) {
+    const nestedDocRef = doc(db, 'curriculum', targetClassId, 'subjects', subjectId, 'chapters', chapterId, 'lessons', lessonId);
+    await setDoc(nestedDocRef, payload, { merge: true });
+  }
+
+  // 2. Also save to top-level 'lessons/{lessonId}' for direct lookup by both web and mobile
+  const topLevelDocRef = doc(db, 'lessons', lessonId);
+  await setDoc(topLevelDocRef, payload, { merge: true });
+
+  return payload;
+}
+
+export async function getLessonFromFirestore(
+  classId: string,
+  subjectId: string,
+  chapterId: string,
+  lessonId: string
+): Promise<LessonData | null> {
+  const targetClassId = formatClassId(classId);
+
+  // Try top-level first
+  try {
+    const topDoc = await getDoc(doc(db, 'lessons', lessonId));
+    if (topDoc.exists() && topDoc.data()?.content) {
+      const d = topDoc.data();
+      return {
+        id: topDoc.id,
+        chapterId: d.chapterId || chapterId,
+        subjectId: d.subjectId || subjectId,
+        classId: d.classId || targetClassId,
+        title: d.title || '',
+        desc: d.desc || '',
+        content: d.content || '',
+        order: d.order ?? 1,
+        status: (d.status as ContentStatus) || 'published',
+        updatedAt: d.updatedAt || Date.now(),
+        createdAt: d.createdAt || Date.now(),
+      };
+    }
+  } catch (e) {
+    // Top-level query notice
+  }
+
+  // Try nested hierarchy
+  if (chapterId && subjectId) {
+    try {
+      const nestedDoc = await getDoc(doc(db, 'curriculum', targetClassId, 'subjects', subjectId, 'chapters', chapterId, 'lessons', lessonId));
+      if (nestedDoc.exists() && nestedDoc.data()?.content) {
+        const d = nestedDoc.data();
+        return {
+          id: nestedDoc.id,
+          chapterId,
+          subjectId,
+          classId: targetClassId,
+          title: d.title || '',
+          desc: d.desc || '',
+          content: d.content || '',
+          order: d.order ?? 1,
+          status: (d.status as ContentStatus) || 'published',
+          updatedAt: d.updatedAt || Date.now(),
+          createdAt: d.createdAt || Date.now(),
+        };
+      }
+    } catch (e) {
+      // Nested query notice
+    }
+  }
+
+  return null;
+}
+

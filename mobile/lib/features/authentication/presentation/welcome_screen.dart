@@ -69,16 +69,6 @@ class WelcomeScreen extends ConsumerWidget {
                 child: const Text('Register', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: isLoading ? null : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                icon: const Icon(Icons.g_mobiledata, size: 32),
-                label: const Text('Continue with Google', style: TextStyle(fontSize: 16)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
               TextButton(
                 onPressed: isLoading ? null : () => ref.read(authControllerProvider.notifier).signInAsGuest(),
                 child: const Text('Continue as Guest', style: TextStyle(fontSize: 16)),

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../domain/progress_repository.dart';
 import '../domain/lesson_progress_model.dart';
 
@@ -32,7 +33,6 @@ class FirebaseProgressDataSource implements ProgressRepository {
         .set(progress.toMap(), SetOptions(merge: true));
   }
 
-  @override
   @override
   Future<void> markLessonComplete(String uid, String lessonId) async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -69,17 +69,56 @@ class FirebaseProgressDataSource implements ProgressRepository {
       final int currentStreak = (data['streak'] as int? ?? data['dailyStreak'] as int? ?? 0);
       final int newStreak = currentStreak == 0 ? 1 : currentStreak;
 
-      await userRef.set({
-        'completedLessons': currentCompleted,
-        'xp': newXp,
-        'level': newLevel,
-        'streak': newStreak,
-        'dailyStreak': newStreak,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
+      try {
+        await userRef.set({
+          'completedLessons': currentCompleted,
+          'xp': newXp,
+          'level': newLevel,
+          'streak': newStreak,
+          'dailyStreak': newStreak,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('DEBUG: Non-fatal error updating user profile document in Firestore: $e');
+      }
     }
   }
 
+  @override
+  Future<void> markLessonUncomplete(String uid, String lessonId) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final progressRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('lessonProgress')
+        .doc(lessonId);
+
+    await progressRef.set({
+      'lessonId': lessonId,
+      'completed': false,
+      'isCompleted': false,
+      'progressPercentage': 0,
+      'uncompletedAt': now,
+      'updatedAt': now,
+    }, SetOptions(merge: true));
+
+    final userRef = _firestore.collection('users').doc(uid);
+    final userSnap = await userRef.get();
+    if (userSnap.exists && userSnap.data() != null) {
+      final data = userSnap.data()!;
+      final List<dynamic> currentCompleted = List.from(data['completedLessons'] ?? []);
+      currentCompleted.remove(lessonId);
+
+      try {
+        await userRef.set({
+          'completedLessons': currentCompleted,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('DEBUG: Non-fatal error uncompleting lesson in user profile: $e');
+      }
+    }
+  }
 
   @override
   Future<List<String>> getBookmarks(String uid) async {

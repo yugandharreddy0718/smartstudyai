@@ -5,6 +5,7 @@ import { geminiService } from '../services/geminiService.js';
 import { cn } from '../lib/utils';
 import { cleanMathText } from '../lib/mathUtils';
 import ReactMarkdown from 'react-markdown';
+import { recordQuizAttempt } from '../services/quizService';
 
 export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
@@ -167,17 +168,25 @@ export default function Upload() {
     setQuizSubmitted(false);
   };
 
+  const getCorrectAnswerText = (q: any) => {
+    if (typeof q.correctAnswer === 'number' && Array.isArray(q.options)) {
+      return q.options[q.correctAnswer] || String(q.correctAnswer);
+    }
+    return String(q.correctAnswer);
+  };
+
   const isCorrect = (selected: string, correct: string) => {
-    if (!selected || !correct) return false;
-    const s = selected.trim().toLowerCase();
-    const c = correct.trim().toLowerCase();
+    if (!selected || correct === undefined || correct === null) return false;
+    const s = String(selected).trim().toLowerCase();
+    const c = String(correct).trim().toLowerCase();
     return s === c || c.includes(s) || s.includes(c);
   };
 
   const calculateScore = () => {
     let score = 0;
     quizQuestions.forEach((q, i) => {
-      if (isCorrect(quizAnswers[i], q.correctAnswer)) {
+      const correctAnswerStr = getCorrectAnswerText(q);
+      if (isCorrect(quizAnswers[i], correctAnswerStr)) {
         score++;
       }
     });
@@ -230,8 +239,25 @@ export default function Upload() {
             const resultString = reader.result as string;
             const commaIndex = resultString.indexOf(',');
             const base64Data = commaIndex !== -1 ? resultString.slice(commaIndex + 1) : resultString;
+            
+            const lowerName = f.name.toLowerCase();
+            let mime = f.type || 'image/jpeg';
+            if (lowerName.endsWith('.docx')) {
+              mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            } else if (lowerName.endsWith('.doc')) {
+              mime = 'application/msword';
+            } else if (lowerName.endsWith('.pdf')) {
+              mime = 'application/pdf';
+            } else if (lowerName.endsWith('.png')) {
+              mime = 'image/png';
+            } else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+              mime = 'image/jpeg';
+            } else if (lowerName.endsWith('.txt')) {
+              mime = 'text/plain';
+            }
+
             resolve({
-              mimeType: f.type || 'image/jpeg',
+              mimeType: mime,
               data: base64Data
             });
           };
@@ -308,7 +334,7 @@ export default function Upload() {
             ) : (
               <div className="text-center space-y-2 relative z-10">
                 <p className="font-display font-bold text-2xl text-slate-900">Drop your study material here</p>
-                <p className="text-slate-400 font-medium">Supports high-res JPG, PNG, and PDF files</p>
+                <p className="text-slate-400 font-medium">Supports high-res JPG, PNG, PDF, DOCX, and TXT files</p>
                 <div className="pt-6">
                    <div className="inline-flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] bg-slate-100 px-3 py-1 rounded-full">
                      Max 10MB per file
@@ -321,7 +347,7 @@ export default function Upload() {
               type="file" 
               className="hidden" 
               id="file-upload" 
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,.docx,.doc,.txt,text/plain"
               onChange={handleFileChange}
             />
             {!file && (
@@ -508,7 +534,18 @@ export default function Upload() {
                          ) : (
                            <button
                              disabled={Object.keys(quizAnswers).length < quizQuestions.length}
-                             onClick={() => setQuizSubmitted(true)}
+                             onClick={() => {
+                               setQuizSubmitted(true);
+                               const score = calculateScore();
+                               const total = quizQuestions.length;
+                               const pct = Math.round((score / (total || 1)) * 100);
+                               recordQuizAttempt({
+                                 lessonId: file?.name || 'uploaded-document',
+                                 score,
+                                 totalQuestions: total,
+                                 percentage: pct
+                               });
+                             }}
                              className="px-10 py-4 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-40 cursor-pointer"
                            >
                              Submit Quiz
@@ -590,7 +627,7 @@ export default function Upload() {
                          <div className="space-y-4">
                            {quizQuestions.map((q: any, i: number) => {
                              const selected = quizAnswers[i];
-                             const correct = q.correctAnswer;
+                             const correct = getCorrectAnswerText(q);
                              const correctMatched = isCorrect(selected, correct);
 
                              return (

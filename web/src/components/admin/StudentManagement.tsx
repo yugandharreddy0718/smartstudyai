@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchStudents, StudentUser } from '../../services/adminService';
+import { fetchStudents, subscribeToStudents, StudentUser } from '../../services/adminService';
 import { 
   Users, 
   Search, 
@@ -29,22 +29,21 @@ export default function StudentManagement() {
   // Student detail modal state
   const [selectedStudent, setSelectedStudent] = useState<StudentUser | null>(null);
 
-  const loadStudentsData = async () => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      const data = await fetchStudents();
-      setStudents(data);
-    } catch (err: any) {
-      console.error('Failed to load students:', err);
-      setError(err?.message || 'Failed to retrieve student records from Firestore.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadStudentsData();
+    const unsubscribe = subscribeToStudents(
+      (data) => {
+        setStudents(data);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        setError('Unable to load registered students.');
+        setLoading(false);
+      }
+    );
+    return () => unsubscribe();
   }, []);
 
   const filteredStudents = students.filter((s) => {
@@ -69,15 +68,6 @@ export default function StudentManagement() {
             Browse and inspect active student accounts, academic performance, and learning statistics.
           </p>
         </div>
-
-        <button
-          onClick={loadStudentsData}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all self-start sm:self-auto disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-          <span>Refresh List</span>
-        </button>
       </div>
 
       {/* Search & Grade Filter Bar */}
@@ -123,12 +113,6 @@ export default function StudentManagement() {
             <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
-          <button
-            onClick={loadStudentsData}
-            className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg font-semibold text-xs transition-all shrink-0"
-          >
-            Retry
-          </button>
         </div>
       )}
 
@@ -138,6 +122,11 @@ export default function StudentManagement() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 animate-pulse h-16" />
           ))}
+        </div>
+      ) : students.length === 0 ? (
+        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center">
+          <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+          <h3 className="text-slate-300 font-bold text-base">No registered students yet.</h3>
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center">

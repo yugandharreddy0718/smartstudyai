@@ -66,15 +66,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Priority: Firestore explicit role || Token Claim role || 'student'
           const firestoreRole = docSnap.exists() ? docSnap.data()?.role : undefined;
           const rawRole = firestoreRole || claimRole || 'student';
-          const normalizedRole = String(rawRole).trim().toLowerCase();
+          // Preserve original role casing from Firestore — only trim whitespace
+          // Do NOT toLowerCase() here; 'superAdmin' must remain 'superAdmin'
+          const trimmedRole = String(rawRole).trim();
 
-          // Standardize normalized role onto user profile object
-          normalized.role = (normalizedRole === 'admin' || normalizedRole === 'superadmin') ? (normalizedRole as UserProfile['role']) : 'student';
+          // Canonical role check: accept 'admin', 'superAdmin' (exact Firestore values)
+          // Also tolerate lowercase variants written by mistake in Firestore
+          const isAdminRole = trimmedRole === 'admin' || trimmedRole.toLowerCase() === 'admin';
+          const isSuperAdminRole = trimmedRole === 'superAdmin' || trimmedRole.toLowerCase() === 'superadmin';
+
+          // Standardize role onto user profile object using canonical casing
+          if (isSuperAdminRole) {
+            normalized.role = 'superAdmin';
+          } else if (isAdminRole) {
+            normalized.role = 'admin';
+          } else {
+            normalized.role = 'student';
+          }
 
           if (process.env.NODE_ENV !== 'production' || (import.meta as any).env?.DEV) {
             console.log("UID:", currentUser.uid);
             console.log("EMAIL:", currentUser.email || 'N/A');
-            console.log("FIRESTORE ROLE:", firestoreRole || 'N/A');
+            console.log("FIRESTORE ROLE (raw):", firestoreRole || 'N/A');
             console.log("AUTH CLAIM ROLE:", claimRole || 'N/A');
             console.log("EFFECTIVE ROLE:", normalized.role);
           }

@@ -2,7 +2,7 @@ dist
 node_modules
 coverage
 Test Results
-Vulnerability Test Results
+docs/security/archive
 automation
 appium-tests
 package-lock.json

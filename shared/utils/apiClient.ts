@@ -33,12 +33,31 @@ Authorization header attached: NO`);
   return headers;
 }
 
+async function handleResponse(res: Response) {
+  if (!res.ok) {
+    let errorMessage = `API Error: ${res.status} ${res.statusText}`;
+    try {
+      const errorJson = await res.json();
+      if (errorJson && (errorJson.error || errorJson.message)) {
+        errorMessage = errorJson.error || errorJson.message;
+      }
+    } catch (e) {
+      // Ignore JSON parse error for plain text/HTML error pages
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await res.json();
+  if (data && typeof data === 'object' && data.success === false) {
+    throw new Error(data.error || data.message || 'API request failed.');
+  }
+  return data;
+}
+
 export const apiClient = {
   async get(endpoint: string) {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}${endpoint}`, { headers });
-    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-    return res.json();
+    return handleResponse(res);
   },
   async post(endpoint: string, body: any) {
     const headers = await getAuthHeaders();
@@ -47,7 +66,6 @@ export const apiClient = {
       headers,
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-    return res.json();
+    return handleResponse(res);
   }
 };

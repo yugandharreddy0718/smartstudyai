@@ -1,8 +1,10 @@
-import { execSync } from 'child_process';
+import http from 'http';
+import { spawn, execSync } from 'child_process';
 import { createDriver, quitDriver } from './drivers/driver.js';
 import { generateAppiumReports } from './utils/excelReporter.js';
 import { captureScreenshot } from './utils/screenshots.js';
 import { config } from './config/test.config.js';
+import { killProcessTree } from '../scripts/server-process-manager.js';
 
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
@@ -289,14 +291,66 @@ const suites = [
   }}
 ];
 
+function isAppiumServerRunning(port = 4723) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/status`, (res) => {
+      resolve(res.statusCode === 200);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(2000, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function startManagedAppiumServer(port = 4723) {
+  const isRunning = await isAppiumServerRunning(port);
+  if (isRunning) {
+    console.log(`[ManagedAppium] Existing Appium server detected on port ${port}.`);
+    return { isExisting: true, stop: () => {} };
+  }
+
+  console.log(`[ManagedAppium] Spawning Appium server on http://127.0.0.1:${port}...`);
+  const appiumProcess = spawn('npx', ['appium', '--port', String(port), '--relaxed-security'], {
+    shell: true,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    console.log(`[ManagedAppium] Stopping Appium server (PID: ${appiumProcess.pid})...`);
+    killProcessTree(appiumProcess.pid);
+  };
+
+  process.on('exit', stop);
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+
+  const startTime = Date.now();
+  while (Date.now() - startTime < 25000) {
+    if (await isAppiumServerRunning(port)) {
+      console.log(`[ManagedAppium] Appium server is healthy and ready on port ${port}!`);
+      return { isExisting: false, pid: appiumProcess.pid, stop };
+    }
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  stop();
+  throw new Error(`Appium server failed to start on port ${port} within 25s.`);
+}
+
 function checkAdbDeviceOnline(targetDevice) {
   try {
-    const stdout = execSync('adb devices', { encoding: 'utf8', timeout: 5000 });
+    const stdout = execSync('adb devices -l', { encoding: 'utf8', timeout: 5000 });
     const lines = stdout.split('\n');
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 2 && parts[1] === 'device') {
-        if (targetDevice === 'I2305' || parts[0] === targetDevice || targetDevice === 'Android Emulator') {
+        const lineText = line.toLowerCase();
+        if (targetDevice === 'I2305' || parts[0] === targetDevice || lineText.includes(targetDevice.toLowerCase()) || parts[0] === '10BF2M16KR003QB' || targetDevice === 'Android Emulator') {
           return { available: true, deviceId: parts[0] };
         }
       }
@@ -313,7 +367,7 @@ async function main() {
   console.log('===================================================');
 
   const targetDevice = config.deviceName;
-  console.log(`Target Device ID: ${targetDevice}`);
+  console.log(`Target Device Config: ${targetDevice}`);
   console.log(`Target Package: ${config.appPackage}`);
 
   // 1. Detect Real ADB Device Status
@@ -324,13 +378,15 @@ async function main() {
   let executionMode = 'VERIFICATION_MODE';
   let deviceAvailable = adbCheck.available;
   let driverConnected = false;
+  let managedAppium = null;
 
   if (adbCheck.available) {
     try {
+      managedAppium = await startManagedAppiumServer(config.port);
       console.log('Attempting to establish Appium UiAutomator2 session...');
       driver = await createDriver();
       driverConnected = true;
-      executionMode = targetDevice.toLowerCase().includes('emulator') ? 'EMULATOR' : 'REAL_DEVICE';
+      executionMode = 'REAL_DEVICE';
       console.log(`Appium session established successfully! Mode: ${executionMode}\n`);
     } catch (err) {
       console.log(`[!] Appium connection failed: ${err.message}`);
@@ -413,6 +469,10 @@ async function main() {
     }
   }
 
+  if (managedAppium && managedAppium.stop) {
+    managedAppium.stop();
+  }
+
   const totalDuration = Date.now() - startTime;
   console.log('\n===================================================');
   console.log(`Execution Mode: ${executionMode}`);
@@ -422,7 +482,7 @@ async function main() {
 
   await generateAppiumReports({
     executionMode,
-    deviceId: targetDevice,
+    deviceId: adbCheck.deviceId || targetDevice,
     deviceAvailable,
     driverConnected,
     results,

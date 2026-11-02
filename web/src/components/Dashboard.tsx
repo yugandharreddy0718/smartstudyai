@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { calculateSubjectProgress } from '../data/curriculum';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const completed = profile?.completedLessons || [];
 
   const mathsProgress = calculateSubjectProgress('maths', completed, profile?.studentClass);
@@ -16,6 +16,14 @@ export default function Dashboard() {
   const biologyProgress = calculateSubjectProgress('biology', completed, profile?.studentClass);
   const historyProgress = calculateSubjectProgress('history', completed, profile?.studentClass);
   const geographyProgress = calculateSubjectProgress('geography', completed, profile?.studentClass);
+
+  const studentName = profile?.displayName?.split(' ')[0] || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student';
+
+  // Dynamic daily goals based on actual user activity
+  const streakGoalDone = (profile?.stats?.streak || 0) >= 1;
+  const analysisGoalDone = completed.length > 0;
+  const quizGoalDone = (profile?.stats?.xp || 0) >= 100;
+  const goalsDoneCount = [streakGoalDone, analysisGoalDone, quizGoalDone].filter(Boolean).length;
 
   return (
     <div className="space-y-8">
@@ -27,7 +35,7 @@ export default function Dashboard() {
                <span className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Live Learning Session</span>
             </div>
-            <h2 className="text-5xl font-display font-bold mb-4 tracking-tight">Welcome, {profile?.displayName?.split(' ')[0] || 'Yugandhar'}! 👋</h2>
+            <h2 className="text-5xl font-display font-bold mb-4 tracking-tight">Welcome, {studentName}! 👋</h2>
             <p className="text-slate-400 font-medium mb-8 leading-relaxed">
               You've mastered <span className="text-white font-bold">{completed.length} topics</span> total. Keep up the momentum!
             </p>
@@ -37,15 +45,13 @@ export default function Dashboard() {
                 Continue Learning
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <div className="flex -space-x-3">
-                {[1,2,3].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[10px] font-bold">
-                    {String.fromCharCode(64 + i)}
-                  </div>
-                ))}
-                <div className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                  +{completed.length + 2}
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-indigo-400">
+                  Grade {profile?.studentClass || '8'}
+                </span>
+                <span className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-emerald-400">
+                  Lvl {profile?.stats?.level || 1}
+                </span>
               </div>
             </div>
           </div>
@@ -53,12 +59,12 @@ export default function Dashboard() {
           <div className="flex gap-4">
             <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 text-center min-w-[140px] hover:bg-white/10 transition-colors">
               <Flame className="w-10 h-10 text-orange-400 fill-orange-400 mx-auto mb-3" />
-              <p className="text-3xl font-display font-bold">{profile?.stats.streak || 1}</p>
+              <p className="text-3xl font-display font-bold">{profile?.stats?.streak ?? 0}</p>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Day Streak</p>
             </div>
             <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 text-center min-w-[140px] hover:bg-white/10 transition-colors">
               <Trophy className="w-10 h-10 text-yellow-400 fill-yellow-400 mx-auto mb-3" />
-              <p className="text-3xl font-display font-bold">{profile?.stats.xp || 0}</p>
+              <p className="text-3xl font-display font-bold">{profile?.stats?.xp || 0}</p>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">XP Points</p>
             </div>
           </div>
@@ -94,12 +100,14 @@ export default function Dashboard() {
         <section className="p-8 bg-white rounded-[3rem] border border-slate-100 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-display font-bold text-xl uppercase tracking-tight">Daily Goals</h3>
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">2/5 Done</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">
+              {goalsDoneCount}/3 Done
+            </span>
           </div>
           <div className="space-y-4 flex-1">
-            <ChallengeItem title="Mastery Quiz" desc="Score 100% on any quiz" xp={100} done={false} />
-            <ChallengeItem title="Deep Analysis" desc="Analyze a new lesson" xp={50} done={completed.length > 0} />
-            <ChallengeItem title="Daily Streak" desc="Log in 3 days in a row" xp={20} done={true} />
+            <ChallengeItem title="Mastery Quiz" desc="Earn XP by attempting a quiz" xp={100} done={quizGoalDone} />
+            <ChallengeItem title="Lesson Mastery" desc="Complete a curriculum topic" xp={50} done={analysisGoalDone} />
+            <ChallengeItem title="Daily Activity" desc="Maintain your daily learning streak" xp={20} done={streakGoalDone} />
           </div>
         </section>
       </div>

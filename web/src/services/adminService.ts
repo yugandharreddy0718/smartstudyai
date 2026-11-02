@@ -4,7 +4,8 @@ import {
   getDocs, 
   collectionGroup,
   doc,
-  getDoc
+  getDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { UserProfile, UserRole } from '@smartstudy/shared';
 import { getChaptersBySubject, getLessonById } from '../data/curriculum';
@@ -58,53 +59,123 @@ export interface ValidationReport {
   errors: string[];
 }
 
+/**
+ * Determines whether a user document represents a valid registered student account.
+ * Excludes:
+ * - Empty or missing UIDs
+ * - Accounts with role other than 'student' (never assumes default 'student')
+ * - Admin and superAdmin accounts
+ * - Anonymous / guest sessions (provider === 'anonymous' or isAnonymous === true)
+ * - Missing or invalid email addresses
+ * - Mock, demonstration, or sample accounts
+ */
+export function isRegisteredStudent(uid: string, data: any): boolean {
+  if (!uid || typeof uid !== 'string' || !uid.trim()) return false;
+  if (!data || typeof data !== 'object') return false;
+
+  // Role must be explicitly 'student' (which also naturally excludes 'admin', 'superAdmin', etc.)
+  const roleNorm = String(data.role || '').trim().toLowerCase();
+  if (roleNorm !== 'student') return false;
+
+  // Exclude anonymous / guest accounts generated during test runs
+  if (data.provider === 'anonymous' || data.isAnonymous === true) return false;
+
+  // Must have a valid registered email address
+  const email = typeof data.email === 'string' ? data.email.trim() : '';
+  if (!email || !email.includes('@')) return false;
+
+  // Exclude mock / demonstration flags
+  if (data.isMock === true || data.isSample === true || data.isDemo === true || data.mock === true) return false;
+
+  return true;
+}
+
+/**
+ * Determines whether a user document represents an administrator account.
+ */
+export function isRegisteredAdmin(uid: string, data: any): boolean {
+  if (!uid || typeof uid !== 'string' || !uid.trim()) return false;
+  if (!data || typeof data !== 'object') return false;
+
+  const roleNorm = String(data.role || '').trim().toLowerCase();
+  if (roleNorm !== 'admin' && roleNorm !== 'superadmin') return false;
+
+  if (data.isMock === true || data.isSample === true || data.isDemo === true || data.mock === true) return false;
+
+  return true;
+}
+
 export async function fetchAdminStats(): Promise<AdminStats> {
   try {
-    // 1. Fetch Users stats
+    // 1. Fetch Users stats with strict UID deduplication and role filtering
     let totalStudents = 0;
     let totalAdmins = 0;
     
     try {
       const usersSnap = await getDocs(collection(db, 'users'));
+      const seenStudentUids = new Set<string>();
+      const seenAdminUids = new Set<string>();
+
       usersSnap.forEach((docSnap) => {
+        const uid = docSnap.id;
         const data = docSnap.data();
-        const role = data.role || 'student';
-        if (role === 'admin' || role === 'superAdmin') {
-          totalAdmins++;
-        } else {
-          totalStudents++;
+
+        if (isRegisteredAdmin(uid, data)) {
+          seenAdminUids.add(uid);
+        } else if (isRegisteredStudent(uid, data)) {
+          seenStudentUids.add(uid);
         }
       });
+
+      // Ensure any admin UID is completely excluded from student counts
+      seenAdminUids.forEach((adminUid) => {
+        seenStudentUids.delete(adminUid);
+      });
+
+      totalStudents = seenStudentUids.size;
+      totalAdmins = seenAdminUids.size;
     } catch (err: any) {
-      console.warn('Notice fetching users collection for stats:', err?.message || err);
-      // Re-throw if it's a permission denied error
-      if (err?.code === 'permission-denied' || err?.message?.includes('permission-denied')) {
-        throw err;
-      }
+      console.error('Error fetching users collection for stats:', err?.message || err);
+      // Re-throw so dashboard loading/error state displays properly instead of silently showing false data
+      throw err;
     }
 
-    // 2. Fetch Quizzes stats
+    // 2. Fetch Quizzes stats with document ID deduplication
     let totalQuizzes = 0;
     try {
       const quizzesSnap = await getDocs(collection(db, 'quizzes'));
-      totalQuizzes = quizzesSnap.size;
+      const uniqueQuizIds = new Set<string>();
+      quizzesSnap.forEach((qDoc) => {
+        if (qDoc.id && qDoc.id.trim()) {
+          uniqueQuizIds.add(qDoc.id.trim());
+        }
+      });
+      totalQuizzes = uniqueQuizIds.size;
     } catch (err: any) {
       console.warn('Notice fetching quizzes collection for stats:', err?.message || err);
     }
 
-    // 3. Fetch Lessons stats (Fallback to local static curriculum baseline if Firestore collection not populated)
-    let totalLessons = 444;
-    let totalChapters = 178;
-    let totalSubjects = 6;
-
-    try {
-      const lessonsSnap = await getDocs(collection(db, 'lessons'));
-      if (!lessonsSnap.empty && lessonsSnap.size > 444) {
-        totalLessons = lessonsSnap.size;
-      }
-    } catch (err: any) {
-      console.warn('Notice fetching lessons collection for stats:', err?.message || err);
-    }
+    // 3. Compute curriculum counts dynamically from local curriculum data
+    // These reflect the bundled course content, not Firestore documents.
+    // getChaptersBySubject returns *lesson-level* entries (444 total).
+    // Each lesson entry has a chapterId — the unique chapterId values give us chapter count (178).
+    const GRADES = ['6', '7', '8', '9', '10'];
+    const ACTIVE_SUBJECTS = ['maths', 'physics', 'chemistry', 'biology', 'history', 'geography'];
+    const totalSubjects = ACTIVE_SUBJECTS.length; // 6
+    const uniqueChapterIds = new Set<string>();
+    let computedLessons = 0;
+    GRADES.forEach(grade => {
+      ACTIVE_SUBJECTS.forEach(subj => {
+        const lessons = getChaptersBySubject(subj, grade);
+        computedLessons += lessons.length;
+        lessons.forEach(l => {
+          if (l.chapterId) uniqueChapterIds.add(l.chapterId);
+          else uniqueChapterIds.add(l.id); // fallback: lesson is its own chapter
+        });
+      });
+    });
+    const totalChapters = uniqueChapterIds.size;
+    const totalLessons = computedLessons;
 
     const totalCurriculumItems = totalSubjects + totalChapters + totalLessons;
 
@@ -126,33 +197,89 @@ export async function fetchAdminStats(): Promise<AdminStats> {
 export async function fetchStudents(): Promise<StudentUser[]> {
   try {
     const usersSnap = await getDocs(collection(db, 'users'));
-    const students: StudentUser[] = [];
+    const studentMap = new Map<string, StudentUser>();
 
     usersSnap.forEach((docSnap) => {
+      const uid = docSnap.id;
       const data = docSnap.data();
-      students.push({
-        uid: docSnap.id,
-        email: data.email || 'N/A',
-        displayName: data.displayName || data.name || 'Student',
-        studentClass: data.studentClass || data.grade || '8',
-        role: (data.role as UserRole) || 'student',
-        createdAt: data.createdAt || Date.now(),
-        lastLogin: data.lastLogin || Date.now(),
+
+      // Only include valid registered student accounts
+      if (!isRegisteredStudent(uid, data)) return;
+
+      const email = data.email.trim();
+      const displayName = data.displayName || data.name || email.split('@')[0] || 'Student';
+      const rawClass = data.studentClass || data.grade || '8';
+      const studentClass = rawClass.toString().replace(/^(class_?)/i, '');
+
+      studentMap.set(uid, {
+        uid,
+        email,
+        displayName,
+        studentClass,
+        role: 'student',
+        createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
+        lastLogin: typeof data.lastLogin === 'number' ? data.lastLogin : Date.now(),
         stats: {
-          xp: data.stats?.xp || data.xp || 0,
-          streak: data.stats?.streak || data.streak || 0,
-          level: data.stats?.level || data.level || 1,
-          badges: data.stats?.badges || []
+          xp: data.stats?.xp ?? data.xp ?? 0,
+          streak: data.stats?.streak ?? data.streak ?? 0,
+          level: data.stats?.level ?? data.level ?? 1,
+          badges: Array.isArray(data.stats?.badges) ? data.stats.badges : (Array.isArray(data.badges) ? data.badges : [])
         },
-        completedLessons: data.completedLessons || []
+        completedLessons: Array.isArray(data.completedLessons) ? data.completedLessons : []
       });
     });
 
-    return students;
+    return Array.from(studentMap.values());
   } catch (err: any) {
     console.error('Error fetching students from Firestore:', err);
     throw err;
   }
+}
+
+export function subscribeToStudents(
+  onUpdate: (students: StudentUser[]) => void,
+  onError: (error: Error) => void
+): () => void {
+  const usersRef = collection(db, 'users');
+  
+  const unsubscribe = onSnapshot(usersRef, (usersSnap) => {
+    const studentMap = new Map<string, StudentUser>();
+    usersSnap.forEach((docSnap) => {
+      const uid = docSnap.id;
+      const data = docSnap.data();
+
+      // Only include valid registered student accounts
+      if (!isRegisteredStudent(uid, data)) return;
+
+      const email = data.email.trim();
+      const displayName = data.displayName || data.name || email.split('@')[0] || 'Student';
+      const rawClass = data.studentClass || data.grade || '8';
+      const studentClass = rawClass.toString().replace(/^(class_?)/i, '');
+
+      studentMap.set(uid, {
+        uid,
+        email,
+        displayName,
+        studentClass,
+        role: 'student',
+        createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
+        lastLogin: typeof data.lastLogin === 'number' ? data.lastLogin : Date.now(),
+        stats: {
+          xp: data.stats?.xp ?? data.xp ?? 0,
+          streak: data.stats?.streak ?? data.streak ?? 0,
+          level: data.stats?.level ?? data.level ?? 1,
+          badges: Array.isArray(data.stats?.badges) ? data.stats.badges : (Array.isArray(data.badges) ? data.badges : [])
+        },
+        completedLessons: Array.isArray(data.completedLessons) ? data.completedLessons : []
+      });
+    });
+    onUpdate(Array.from(studentMap.values()));
+  }, (err) => {
+    console.error('Error in students subscription:', err);
+    onError(err);
+  });
+
+  return unsubscribe;
 }
 
 export async function updateUserRoleInBackend(targetUid: string, newRole: UserRole): Promise<{ message: string }> {
@@ -197,14 +324,24 @@ export async function fetchAnalyticsData(): Promise<AdminAnalyticsMetrics> {
     totalCompletedLessons += (s.completedLessons?.length || 0);
   });
 
-  const subjectDistribution: Record<string, number> = {
-    'Mathematics': 158,
-    'Physics': 40,
-    'Chemistry': 27,
-    'Biology': 42,
-    'History & Civics': 83,
-    'Geography & Economics': 94
+  // Compute subject lesson distribution dynamically from local curriculum data
+  const DIST_GRADES = ['6', '7', '8', '9', '10'];
+  const SUBJECT_MAP: Record<string, string> = {
+    'maths': 'Mathematics',
+    'physics': 'Physics',
+    'chemistry': 'Chemistry',
+    'biology': 'Biology',
+    'history': 'History & Civics',
+    'geography': 'Geography & Economics'
   };
+  const subjectDistribution: Record<string, number> = {};
+  Object.values(SUBJECT_MAP).forEach(name => { subjectDistribution[name] = 0; });
+  DIST_GRADES.forEach(grade => {
+    Object.entries(SUBJECT_MAP).forEach(([subjId, subjName]) => {
+      const chapters = getChaptersBySubject(subjId, grade);
+      subjectDistribution[subjName] += chapters.length;
+    });
+  });
 
   const averageXP = students.length > 0 ? Math.round(totalXP / students.length) : 0;
   const activeGradesCount = Object.keys(gradeDistribution).filter(g => gradeDistribution[g] > 0).length;
@@ -293,12 +430,13 @@ export function validateCurriculumContent(): ValidationReport {
   });
 
   const passed = errors.length === 0;
+  // seenLessonIds = all 444 lesson entries; seenChapterIds = 178 unique parent chapters
 
   return {
     passed,
-    totalChapters: 178,
-    totalLessons: 444,
-    uniqueChapterIdsCount: 178,
+    totalChapters: seenChapterIds.size,   // 178 unique parent chapter IDs
+    totalLessons: seenLessonIds.size,     // 444 leaf lesson entries
+    uniqueChapterIdsCount: seenChapterIds.size,
     uniqueLessonIdsCount: seenLessonIds.size,
     validGradeMapping,
     validSubjectMapping,

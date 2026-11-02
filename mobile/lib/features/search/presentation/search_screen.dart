@@ -72,7 +72,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 chapter: chapter,
                 lesson: lesson,
               ));
-              if (matches.length >= 40) break; // Limit search results
+              if (matches.length >= 40) break;
             }
           }
           if (matches.length >= 40) break;
@@ -91,12 +91,21 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => context.pop(),
+        ),
         title: TextField(
           controller: _queryController,
           autofocus: true,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
           decoration: const InputDecoration(
             hintText: 'Search 444 lessons, 178 chapters...',
+            hintStyle: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             border: InputBorder.none,
           ),
           onChanged: (val) => _performSearch(val),
@@ -104,7 +113,7 @@ class _SearchScreenState extends State<SearchScreen> {
         actions: [
           if (_queryController.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.clear),
+              icon: const Icon(Icons.clear_rounded, color: Color(0xFF94A3B8)),
               onPressed: () {
                 _queryController.clear();
                 _performSearch('');
@@ -113,42 +122,75 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: _isSearching
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
           : _queryController.text.trim().isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(32.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search, size: 64, color: Colors.grey),
+                      children: const [
+                        Icon(Icons.search_rounded, size: 64, color: Color(0xFFCBD5E1)),
                         SizedBox(height: 16),
-                        Text('Search SmartStudy AI Curriculum', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(
+                          'Search SmartStudy AI Curriculum',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A)),
+                        ),
                         SizedBox(height: 8),
-                        Text('Type any concept, equation, chapter title, or subject name to search across Classes 6 to 10.', textAlign: TextAlign.center),
+                        Text(
+                          'Type any concept, equation, chapter title, or subject name to search across Classes 6 to 10.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+                        ),
                       ],
                     ),
                   ),
                 )
               : _results.isEmpty
-                  ? const Center(child: Text('No matching lessons found.'))
+                  ? Center(
+                      child: Text(
+                        'No matching lessons found for "${_queryController.text}".',
+                        style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                      ),
+                    )
                   : ListView.builder(
+                      padding: const EdgeInsets.all(16),
                       itemCount: _results.length,
                       itemBuilder: (context, idx) {
                         final item = _results[idx];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            child: Text('Class ${item.grade}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
                           ),
-                          title: Text(item.lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('Class ${item.grade} • ${item.subject.name} • ${item.chapter.title}'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () {
-                            context.push(
-                              '/lesson/\${item.lesson.id}',
-                              extra: item.lesson,
-                            );
-                          },
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            leading: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'G${item.grade}',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
+                              ),
+                            ),
+                            title: Text(
+                              item.lesson.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                            ),
+                            subtitle: Text(
+                              'Grade ${item.grade} • ${item.subject.name} • ${item.chapter.title}',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+                            onTap: () {
+                              context.push('/lesson_reader', extra: item.lesson);
+                            },
+                          ),
                         );
                       },
                     ),

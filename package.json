@@ -2,6 +2,7 @@
   "name": "smartstudy-ai-monorepo",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "workspaces": [
     "backend",
     "web",
@@ -19,11 +20,14 @@
     "test": "npm test --workspace=web",
     "test:coverage": "npm test --workspace=web",
     "test:selenium": "node selenium-tests/runner.js",
-    "test:selenium:chrome": "node selenium-tests/runner.js",
-    "report:selenium": "node -e \"console.log('Selenium reports available in selenium-tests/reports/')\"",
+    "report:selenium": "python selenium-tests/reporter.py",
     "test:appium": "node appium-tests/runner.js",
-    "test:appium:sim": "node appium-tests/runner.js",
-    "report:appium": "node -e \"console.log('Appium reports available in appium-tests/reports/')\""
+    "test:security": "node scripts/run-security-audit.js",
+    "test:k6:smoke": "k6 run --summary-trend-stats \"avg,min,med,max,p(90),p(95),p(99)\" -e MODE=smoke performance-tests/k6-baseline.js",
+    "test:k6": "k6 run --summary-trend-stats \"avg,min,med,max,p(90),p(95),p(99)\" -e MODE=baseline performance-tests/k6-baseline.js",
+    "test:k6:api": "k6 run --summary-trend-stats \"avg,min,med,max,p(90),p(95),p(99)\" performance-tests/k6-api-baseline.js",
+    "test:pipeline": "node scripts/run-test-pipeline.js",
+    "test:pipeline:smoke": "node scripts/run-test-pipeline.js --smoke-only"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

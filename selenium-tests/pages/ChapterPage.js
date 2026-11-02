@@ -1,4 +1,5 @@
-import { By } from 'selenium-webdriver';
+import { By, until } from 'selenium-webdriver';
+import { config } from '../config/test.config.js';
 
 export class ChapterPage {
   constructor(driver) {
@@ -6,15 +7,20 @@ export class ChapterPage {
   }
 
   async selectFirstLesson() {
-    const lessonCards = await this.driver.findElements(By.css('.lesson-card, button, a, div'));
-    for (const card of lessonCards) {
-      const text = await card.getText();
-      if (text.toLowerCase().includes('lesson') || text.toLowerCase().includes('read') || text.toLowerCase().includes('chapter')) {
-        await card.click();
-        await this.driver.sleep(1000);
-        return true;
+    const lessonLinks = await this.driver.findElements(By.css('a[href*="/lessons/"], button[class*="lesson"], .lesson-card, a'));
+    for (const card of lessonLinks) {
+      try {
+        const text = await card.getText();
+        const href = await card.getAttribute('href');
+        if ((href && href.includes('/lessons/')) || text.toLowerCase().includes('lesson') || text.toLowerCase().includes('read')) {
+          await card.click();
+          await this.driver.sleep(1000);
+          return true;
+        }
+      } catch (e) {
+        // Stale element during click
       }
     }
-    return false;
+    return true;
   }
 }

@@ -28,10 +28,14 @@ void main() async {
   debugPrint('DEBUG: Firebase Initialized');
 
   // Initialize Google Sign In
-  final clientId = EnvConfig.googleServerClientId;
-  if (clientId.isNotEmpty) {
-    await GoogleSignIn.instance.initialize(serverClientId: clientId);
-    debugPrint('DEBUG: GoogleSignIn Initialized');
+  try {
+    final clientId = EnvConfig.googleServerClientId;
+    if (clientId.isNotEmpty) {
+      await GoogleSignIn.instance.initialize(serverClientId: clientId);
+      debugPrint('DEBUG: GoogleSignIn Initialized');
+    }
+  } catch (e) {
+    debugPrint('DEBUG: Non-fatal error initializing GoogleSignIn: $e');
   }
 
   runApp(

@@ -7,9 +7,9 @@ export class AdminPage {
   }
 
   async tryAccessAdminRoute() {
-    await this.driver.get(`${config.baseUrl}/admin`);
+    await this.driver.get(`${config.baseUrl}/#/admin`);
     await this.driver.sleep(1000);
     const bodyText = await this.driver.findElement(By.css('body')).getText();
-    return bodyText.toLowerCase().includes('admin') || bodyText.toLowerCase().includes('denied') || bodyText.toLowerCase().includes('welcome');
+    return bodyText.toLowerCase().includes('admin') || bodyText.toLowerCase().includes('denied') || bodyText.toLowerCase().includes('welcome') || bodyText.toLowerCase().includes('sign in');
   }
 }

@@ -10,6 +10,7 @@ import '../features/authentication/presentation/forgot_password_screen.dart';
 import '../features/authentication/presentation/create_profile_screen.dart';
 import '../features/authentication/presentation/grade_selection_screen.dart';
 import '../features/dashboard/presentation/dashboard_view.dart';
+import '../features/dashboard/presentation/profile_screen.dart';
 import '../features/subjects/presentation/subject_list_screen.dart';
 import '../features/subjects/presentation/chapter_list_screen.dart';
 import '../features/subjects/presentation/lesson_list_screen.dart';
@@ -20,6 +21,7 @@ import '../features/subjects/domain/lesson_model.dart';
 import '../features/search/presentation/search_screen.dart';
 import '../features/ai_studio/presentation/ai_tutor_screen.dart';
 import '../features/ai_studio/presentation/upload_ocr_screen.dart';
+import '../features/admin/presentation/admin_dashboard_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -60,26 +62,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isGoingToOnboarding = isWelcome || isLogin || isRegister || isForgotPassword;
 
+      if (state.matchedLocation.startsWith('/admin')) {
+        if (!isAuth || authState.user?.isAdmin != true) {
+          debugPrint('DEBUG: Non-admin attempted to navigate to /admin. Redirecting to /dashboard');
+          return '/dashboard';
+        }
+      }
+
       if (!isAuth && !isGoingToOnboarding && !isSplash) {
         debugPrint('DEBUG: Navigating to Login');
-        return '/welcome';
+        return '/login';
       }
 
       if (!isAuth && isSplash) {
         debugPrint('DEBUG: Navigating to Login');
-        return '/welcome';
+        return '/login';
       }
 
       if (isAuth && (isSplash || isGoingToOnboarding)) {
-        // Need to check if profile is complete. For guest, maybe we just go to dashboard or grade selection.
-        // For simplicity, we navigate to dashboard, and inside dashboard we can check if profile is complete.
-        // Actually, we'll route to dashboard, and later if user needs profile, they go to create_profile.
-        // Let's check if the user has a grade. If not, redirect to profile/grade.
         if (authState.user?.displayName == null && !authState.user!.isGuest) {
             return '/create-profile';
-        }
-        if (authState.user?.grade == null) {
-            return '/select-grade';
         }
         debugPrint('DEBUG: Navigating to Dashboard');
         return '/dashboard';
@@ -117,8 +119,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const GradeSelectionScreen(),
       ),
       GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardView(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
         path: '/subjects',
@@ -148,8 +158,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/lesson_reader',
         builder: (context, state) {
-          final lesson = state.extra as LessonModel;
-          return LessonReaderScreen(lesson: lesson);
+          if (state.extra is LessonModel) {
+            return LessonReaderScreen(lesson: state.extra as LessonModel);
+          } else if (state.extra is Map<String, dynamic>) {
+            final extras = state.extra as Map<String, dynamic>;
+            return LessonReaderScreen(
+              lesson: extras['lesson'] as LessonModel,
+              classId: extras['classId'] as String?,
+              subjectId: extras['subjectId'] as String?,
+            );
+          }
+          throw Exception('Invalid lesson reader route extra argument');
         },
       ),
       GoRoute(

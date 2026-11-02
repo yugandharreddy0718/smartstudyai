@@ -63,13 +63,32 @@ class AuthStateNotifier extends Notifier<AuthState> {
   Future<void> _checkAuthState() async {
     debugPrint('DEBUG: Auth Initialized');
     final cachedUser = await ref.read(authRepositoryProvider).getCachedUser();
-    if (cachedUser != null) {
-      debugPrint('DEBUG: Current User Loaded: ${cachedUser.email}');
-      if (cachedUser.isGuest) {
-        state = AuthState.guest(cachedUser);
-      } else {
-        state = AuthState.authenticated(cachedUser);
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+
+    // 1. If Firebase Auth has a logged-in user, fetch fresh data from Firestore
+    if (firebaseUser != null) {
+      try {
+        final userDoc = await ref.read(firestoreProvider).collection('users').doc(firebaseUser.uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          final data = userDoc.data()!;
+          data['id'] = firebaseUser.uid;
+          data['uid'] = firebaseUser.uid;
+          data['isGuest'] = firebaseUser.isAnonymous;
+          final freshUser = UserModel.fromJson(data);
+          await ref.read(authLocalDataSourceProvider).saveUser(freshUser);
+          setAuthenticated(freshUser);
+          debugPrint('DEBUG: Current User Loaded from Firestore: ${freshUser.email}, role: ${freshUser.role}');
+          return;
+        }
+      } catch (e) {
+        debugPrint('DEBUG: Error fetching fresh user profile from Firestore on startup: $e');
       }
+    }
+
+    // 2. If Firestore wasn't reachable or no firebaseUser, fallback to cached user
+    if (cachedUser != null) {
+      debugPrint('DEBUG: Current User Loaded from Cache: ${cachedUser.email}, role: ${cachedUser.role}');
+      setAuthenticated(cachedUser);
     } else {
       debugPrint('DEBUG: No Current User (Unauthenticated)');
       state = AuthState.unauthenticated();
