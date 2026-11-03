@@ -1,10 +1,6 @@
 name: SmartStudy AI — CI/CD Production Release Pipeline
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       target_url:

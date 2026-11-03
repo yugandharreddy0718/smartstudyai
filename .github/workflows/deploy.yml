@@ -1,0 +1,265 @@
+name: SmartStudy AI Quality Pipeline & Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  # =========================================================================
+  # 1. Selenium Web Tests (375 Cases)
+  # =========================================================================
+  selenium-tests:
+    name: 'Selenium Web Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/selenium/requirements.txt
+
+      - name: Run Selenium Web Tests (375 Cases)
+        run: python tests/selenium/test_selenium.py
+
+      - name: Upload Selenium Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selenium-report
+          path: reports/selenium/
+          retention-days: 14
+
+  # =========================================================================
+  # 2. Appium Mobile Tests (356 Cases)
+  # =========================================================================
+  appium-tests:
+    name: 'Appium Mobile Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/appium/requirements.txt
+
+      - name: Run Appium Mobile Tests (356 Cases)
+        run: python tests/appium/test_appium.py
+
+      - name: Upload Appium Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appium-report
+          path: reports/appium/
+          retention-days: 14
+
+  # =========================================================================
+  # 3. Load Tests (350 Cases)
+  # =========================================================================
+  load-tests:
+    name: 'Load Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/load/requirements.txt
+
+      - name: Run Web Load Tests (350 Cases)
+        run: python tests/load/run_load_test.py
+
+      - name: Upload Load Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-report
+          path: reports/load-testing/
+          retention-days: 14
+
+  # =========================================================================
+  # 4. DAST Security Tests (350 Cases)
+  # =========================================================================
+  dast-security-tests:
+    name: 'DAST Security Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/dast/requirements.txt
+
+      - name: Run DAST Security Tests (350 Cases)
+        run: python tests/dast/test_dast.py
+
+      - name: Upload DAST Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dast-report
+          path: reports/dast-security/
+          retention-days: 14
+
+  # =========================================================================
+  # 5. Bundle Reports (1,431 Consolidated Tests)
+  # =========================================================================
+  bundle-reports:
+    name: 'Bundle Reports'
+    runs-on: ubuntu-latest
+    needs: [selenium-tests, appium-tests, load-tests, dast-security-tests]
+    if: always()
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas requests
+
+      - name: Download Selenium Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: selenium-report
+          path: reports/selenium
+
+      - name: Download Appium Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: appium-report
+          path: reports/appium
+
+      - name: Download Load Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: load-report
+          path: reports/load-testing
+
+      - name: Download DAST Artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: dast-report
+          path: reports/dast-security
+
+      - name: Bundle Master QA Reports (1,431 Tests)
+        run: python tests/bundle_reports.py
+
+      - name: Upload Master QA Bundle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: all-qa-reports-bundle
+          path: reports/
+          retention-days: 30
+
+  # =========================================================================
+  # 6. Deploy to GitHub Pages
+  # =========================================================================
+  deploy:
+    name: 'Deploy'
+    runs-on: ubuntu-latest
+    needs: [bundle-reports]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Web Application
+        env:
+          BASE_PATH: '/smartstudyai/'
+        run: npm run build:web
+
+      - name: Download Master QA Bundle
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: all-qa-reports-bundle
+          path: web/dist/reports
+
+      - name: Copy Reports & Test Cases to Distribution
+        run: |
+          mkdir -p web/dist/reports
+          cp -r reports/* web/dist/reports/ 2>/dev/null || true
+          mkdir -p web/dist/test-cases
+          cp -r test-cases/* web/dist/test-cases/ 2>/dev/null || true
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'web/dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
