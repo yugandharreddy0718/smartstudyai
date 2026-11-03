@@ -40,7 +40,7 @@ jobs:
         run: python tests/selenium/test_selenium.py
 
       - name: Upload Selenium Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: selenium-report
@@ -78,7 +78,7 @@ jobs:
         run: python tests/appium/test_appium.py
 
       - name: Upload Appium Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: appium-report
@@ -110,7 +110,7 @@ jobs:
         run: python tests/load/run_load_test.py
 
       - name: Upload Load Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: load-report
@@ -142,7 +142,7 @@ jobs:
         run: python tests/dast/test_dast.py
 
       - name: Upload DAST Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: dast-report
@@ -203,7 +203,7 @@ jobs:
         run: python tests/bundle_reports.py
 
       - name: Upload Master QA Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: all-qa-reports-bundle

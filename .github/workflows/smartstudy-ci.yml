@@ -92,7 +92,7 @@ jobs:
           "
 
       - name: Upload Web Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartstudy-web-build
           path: web/dist/
@@ -149,7 +149,7 @@ jobs:
         run: flutter build apk --debug
 
       - name: Upload Android Debug APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartstudy-android-debug-apk
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
@@ -189,7 +189,7 @@ jobs:
           fi
 
       - name: Upload Security Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: security-audit-reports
@@ -284,7 +284,7 @@ jobs:
           "
 
       - name: Upload Selenium Artifacts (30-day Retention)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: selenium-test-reports
@@ -321,7 +321,7 @@ jobs:
           fi
 
       - name: Upload Performance Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: k6-performance-reports
