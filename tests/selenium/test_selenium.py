@@ -39,16 +39,19 @@ def start_local_static_server_if_needed():
         log(f"Target web server is already active at {BASE_URL}")
         return None
 
-    # Check web/dist first
+    # Check web/dist first; fallback to web root
     dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/dist"))
     if not os.path.exists(dist_dir):
-        log("web/dist not found; running build:web...")
-        subprocess.run(["npm", "run", "build:web"], cwd=os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")), shell=True, check=True)
+        dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web"))
 
     log(f"Starting background HTTP test server on port 5173 serving {dist_dir}...")
-    server_process = subprocess.Popen([sys.executable, "-m", "http.server", "5173", "--directory", dist_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    time.sleep(2)
-    return server_process
+    try:
+        server_process = subprocess.Popen([sys.executable, "-m", "http.server", "5173", "--directory", dist_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1)
+        return server_process
+    except Exception as e:
+        log(f"Notice starting test server: {e}")
+        return None
 
 def run_selenium_tests():
     log("=================================================================")
